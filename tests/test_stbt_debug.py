@@ -1,5 +1,7 @@
 import itertools
 import os
+import pathlib
+import re
 import shutil
 import subprocess
 
@@ -520,6 +522,9 @@ def test_is_screen_black_debug(tmp_path):
 def assert_expected(expected, stbt_debug_dir):
     expected = _find_file(expected)
 
+    # We don't want incidental changes to cause this test to fail:
+    _remove_traceback_lines_from_html(pathlib.Path(stbt_debug_dir))
+
     if os.environ.get("REGENERATE_TEST_DATA") == "1":
         if os.path.exists(expected):
             shutil.rmtree(expected)
@@ -532,6 +537,23 @@ def assert_expected(expected, stbt_debug_dir):
         r"--ignore-matching-lines=0\.99",
         "--ignore-matching-lines=Region",
         expected, stbt_debug_dir])
+
+
+def _remove_traceback_lines_from_html(stbt_debug_dir: pathlib.Path):
+    pattern = re.compile(r"File .*, line .*, in")
+    for html_file in stbt_debug_dir.rglob("*.html"):
+        lines = html_file.read_text().splitlines(keepends=True)
+        filtered = []
+        skip_next = False
+        for line in lines:
+            if skip_next:
+                skip_next = False
+                continue
+            if pattern.search(line):
+                skip_next = True
+                continue
+            filtered.append(line)
+        html_file.write_text("".join(filtered))
 
 
 def _find_file(path, root=os.path.dirname(os.path.abspath(__file__))):
