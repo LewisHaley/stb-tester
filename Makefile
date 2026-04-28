@@ -95,7 +95,6 @@ INSTALL_PYLIB_FILES = \
     _stbt/x-key-mapping.conf \
     _stbt/x11.py \
     _stbt/xorg.conf.in \
-    _stbt/xxhash.py \
     stbt_core/__init__.py \
     stbt_core/pylint_plugin.py
 
@@ -211,12 +210,10 @@ PYTHON_FILES := \
 check: check-pylint check-pyright check-pytest check-integrationtests
 check-pytest: all
 	PYTHONPATH=$$PWD:/usr/lib/python$(python_version)/dist-packages/cec \
-	STBT_CONFIG_FILE=$$PWD/tests/stbt.conf \
 	$(PYTEST) -vv -rs --doctest-modules $(PYTEST_OPTS) \
 	    $$(printf "%s\n" $(PYTHON_FILES) |\
 	       grep -v -e __init__.py -e tests/vstb-example-html5/ -e ^extra/)
 check-pythonpackage:
-	export STBT_CONFIG_FILE=$$PWD/tests/stbt.conf && \
 	$(PYTEST) -vv -rs $(PYTEST_OPTS) \
 	    tests/subdirectory/test_load_image_from_subdirectory.py \
 	    tests/test_android.py \
