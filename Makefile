@@ -95,7 +95,6 @@ INSTALL_PYLIB_FILES = \
     _stbt/x-key-mapping.conf \
     _stbt/x11.py \
     _stbt/xorg.conf.in \
-    _stbt/xxhash.py \
     stbt_core/__init__.py \
     stbt_core/pylint_plugin.py
 
