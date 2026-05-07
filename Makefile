@@ -188,8 +188,7 @@ clean:
 
 PYTHON_FILES := \
     $(shell git ls-files '*.py' \
-      | grep -v -e ^setup.py \
-                -e ^vendor/)
+      | grep -v -e ^vendor/)
 
 check: check-pylint check-pyright check-pytest check-integrationtests
 check-pytest: all
@@ -310,7 +309,7 @@ publish-ci-docker-images: $(CI_DOCKER_IMAGES:%=.github/workflows/.%.built)
 
 pypi-publish:
 	rm -rf dist/
-	python3 setup.py sdist
+	python3 -m build --sdist
 	twine upload dist/*
 
 ### Debian Packaging #########################################################
