@@ -94,3 +94,17 @@ dummy-variables-rgx = "_"
 [tool.pylint.format]
 max-line-length = 80
 ignore-long-lines = "https?://|# pyright:"
+
+[tool.pytest.ini_options]
+python_functions = "test_"
+addopts = [
+    "--doctest-modules",
+]
+doctest_optionflags = [
+    "ALLOW_UNICODE",
+    "ALLOW_BYTES",
+    "ELLIPSIS",
+    "NORMALIZE_WHITESPACE",
+]
+log_level = "debug"
+xfail_strict = true
