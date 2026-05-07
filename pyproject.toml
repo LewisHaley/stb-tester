@@ -5,6 +5,12 @@ extension-pkg-whitelist = [
     "lxml",
     "numpy",
 ]
+init-hook = """
+import gi
+gi.require_version("Gst", "1.0")
+from gi.repository import Gst
+Gst.init()
+"""
 
 [tool.pylint.reports]
 msg-template = "{path}:{line}:{column}: [{msg_id}({symbol}), {obj}] {msg}"
