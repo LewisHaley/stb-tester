@@ -1,6 +1,4 @@
 *.pyc
-*.rpm
-*.srpm
 *_orc.c
 *_orc.h
 .cache
@@ -17,9 +15,7 @@ docs/stbt.1
 dist/
 etc/stbt.conf
 extra/debian/changelog
-extra/fedora/stb-tester.spec
 extra/stb-tester*.debian.tar.xz
-rpmbuild
 stb-tester-*.tar.gz
 stb-tester_*.deb
 stbt-control-relay

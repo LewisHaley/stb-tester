@@ -357,27 +357,8 @@ stb-tester_$(VERSION)-%_$(debian_architecture).deb: \
 	mv "$$tmpdir"/*.deb . && \
 	rm -rf "$$tmpdir"
 
-### Fedora Packaging #########################################################
-
-rpm_topdir?=$(HOME)/rpmbuild
-src_rpm=stb-tester-$(ESCAPED_VERSION)-$(RELEASE)$(shell rpm -E %dist 2>/dev/null).src.rpm
-
-srpm: $(src_rpm)
-
-$(src_rpm): stb-tester-$(VERSION).tar.gz extra/fedora/stb-tester.spec
-	@printf "\n*** Building Fedora src rpm ***\n"
-	mkdir -p $(rpm_topdir)/SOURCES
-	cp stb-tester-$(VERSION).tar.gz $(rpm_topdir)/SOURCES
-	rpmbuild --define "_topdir $(rpm_topdir)" -bs extra/fedora/stb-tester.spec
-	mv $(rpm_topdir)/SRPMS/$(src_rpm) .
-
-rpm: $(src_rpm)
-	sudo dnf builddep -y $<
-	rpmbuild --define "_topdir $(rpm_topdir)" --rebuild $<
-	mv $(rpm_topdir)/RPMS/*/stb-tester-* .
-
 .PHONY: all clean deb dist doc install install-core uninstall
 .PHONY: check check-integrationtests
 .PHONY: check-pytest check-pylint install-for-test
-.PHONY: ppa-publish pypi-publish rpm srpm
+.PHONY: ppa-publish pypi-publish
 .PHONY: FORCE TAGS
