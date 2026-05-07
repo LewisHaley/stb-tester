@@ -17,5 +17,4 @@ override_dh_auto_test :
 
 override_dh_auto_install :
 	make install-core DESTDIR=debian/stb-tester
-	make install-virtual-stb DESTDIR=debian/stb-tester-virtual-stb
 	make install-gpl DESTDIR=debian/stb-tester-gpl

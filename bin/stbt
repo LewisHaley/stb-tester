@@ -15,7 +15,6 @@
 #/     power          Control networked power switch
 #/     screenshot     Capture a single screenshot
 #/     tv             View live video on screen
-#/     virtual-stb    Configure stbt to use an STB emulator
 #/
 #/ For help on a specific command do 'stbt <command> --help'.
 #/ See 'man stbt' for more detailed information.
@@ -52,10 +51,6 @@ case "$cmd" in
         exec_stbt stbt-"$cmd" "$@";;
     templatematch)  # for backwards compatibility
         exec_stbt stbt_match.py "$@";;
-    virtual-stb)
-        exec_stbt stbt_virtual_stb.py "$@"
-        echo "stbt virtual-stb is not installed." >&2
-        exit 1;;
     *)
         usage >&2; exit 1;;
 esac
