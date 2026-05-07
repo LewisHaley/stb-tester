@@ -18,9 +18,10 @@ jobs:
     - uses: actions/checkout@v3
     - name: install & test
       run: |
-        rm -rf stbt_core _stbt &&
         python3 -m venv build_env &&
         source build_env/bin/activate &&
         pip3 install pytest==6.2.5 &&
         pip3 install . &&
+        rm -rf stbt_core _stbt &&
+        ls -al build_env/lib/python3*/site-packages/ &&
         make check-pythonpackage PYTEST=pytest
