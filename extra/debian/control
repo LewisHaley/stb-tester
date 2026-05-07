@@ -40,7 +40,6 @@ Build-Depends: curl,
                tesseract-ocr-deu,
                tesseract-ocr-eng,
                v4l-utils,
-               xdotool
 
 Package: stb-tester
 Architecture: any
@@ -77,18 +76,6 @@ Description: Automated User Interface testing for set-top boxes.
  infrared transmitter) and checking that it has done the right thing by
  analysing what is on screen (typically using an HDMI video-capture card).
  Test scripts are written in Python.
-
-Package: stb-tester-virtual-stb
-Architecture: any
-Depends: stb-tester (>> ${source:Upstream-Version}),
-         gstreamer1.0-x,
-         ratpoison,
-         xdotool,
-         xserver-xorg-input-void,
-         xserver-xorg-video-dummy
-Description: stb-tester support for "virtual" set-top boxes.
- Allows testing software that runs on the host PC rather than on set-top box
- hardware. Installs the "stbt virtual-stb" command.
 
 Package: stb-tester-gpl
 Architecture: any

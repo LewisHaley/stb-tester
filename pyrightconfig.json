@@ -11,7 +11,6 @@
   "ignore": [
     "stbt_control.py",
     "stbt_run.py",
-    "stbt_virtual_stb.py",
     "_stbt/core.py",
     "_stbt/cv2_compat.py",
     "_stbt/diff.py",
