@@ -196,7 +196,7 @@ check-pytest: all
 	PYTHONPATH=$$PWD:/usr/lib/python$(python_version)/dist-packages/cec \
 	$(PYTEST) -vv -rs --doctest-modules $(PYTEST_OPTS) \
 	    $$(printf "%s\n" $(PYTHON_FILES) |\
-	       grep -v -e __init__.py -e tests/vstb-example-html5/ -e ^extra/)
+	       grep -v -e __init__.py -e ^extra/)
 check-pythonpackage:
 	$(PYTEST) -vv -rs $(PYTEST_OPTS) \
 	    tests/subdirectory/test_load_image_from_subdirectory.py \
