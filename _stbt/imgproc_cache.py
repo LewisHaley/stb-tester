@@ -14,6 +14,7 @@ import inspect
 import itertools
 import json
 import os
+import warnings
 import sys
 from contextlib import contextmanager
 from itertools import zip_longest
@@ -216,6 +217,13 @@ def _cache_put(key, value):
                 "deleting the cache file (%s) to purge old "
                 "results\n" % _cache.path())
             _cache_full_warning = True
+    except lmdb.Error as e:
+        if "Input/output error" not in str(e):
+            raise
+        warnings.warn(
+            "I/O error writing to image processing cache.  This will cause "
+            "degraded performance.  Consider deleting the cache file (%s) "
+            "to recreate the cache.\n" % _cache.path())
 
 
 class NotCachable(Exception):
