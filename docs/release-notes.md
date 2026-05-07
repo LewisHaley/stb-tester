@@ -15,6 +15,12 @@ Unreleased
   several issues with their implementation [#805].  If you were using one of
   these PDU types please [raise an issue] on GitHub.
 
+* `stbt virtual-stb` - Dropped entirely, as it hasn't been tested in many years
+  and it targets the x11/xorg display server which is being or has been
+  replaced by Wayland on many Linux distributions, including Ubuntu and Fedora
+  which we target. This includes the `x11` remote type. If you were using
+  these tools please [raise an issue] on GitHub.
+
 [#805]: https://github.com/stb-tester/stb-tester/pull/805
 [raise an issue]: https://github.com/stb-tester/stb-tester/issues/new
 

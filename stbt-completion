@@ -147,7 +147,7 @@ _stbt_control_uri() {
         --control=samsung:*) _stbt_hostname;;
         *)
             compgen -W "$( \
-                    _stbt_no_space irnetbox: lirc: rfb: samsung: x11:
+                    _stbt_no_space irnetbox: lirc: rfb: samsung:
                     _stbt_trailing_space none test)" \
                 -- "$cur";;
     esac
