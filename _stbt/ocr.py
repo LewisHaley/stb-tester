@@ -669,11 +669,29 @@ def bgr_diff(frame, color, threshold, imglog: ImageLogger):
 
     if imglog.enabled:
         normalised = numpy.sqrt(sqd / 3)
-        imglog.imwrite("diff", normalised)
+        imglog.imwrite(
+            "diff", normalised,
+            description=(
+                f"The Euclidean distance of each pixel from the specified "
+                f"text_color ({color!r}), normalised to the range 0–255.  "
+                "Darker pixels are closer to the text color and are more "
+                "likely to be text."
+            ),
+            source_region=imglog.data.get("region"),
+        )
 
     d = sqd >= (threshold ** 2) * 3
     d = d.astype(numpy.uint8) * 255
-    imglog.imwrite("binarized", d)
+    imglog.imwrite(
+        "binarized", d,
+        description=(
+            f"Binary image after applying text_color_threshold ({threshold}). "
+            "Black pixels are within the threshold distance of text_color and "
+            "will be treated as potential text; white pixels are too far from "
+            "text_color and will be treated as background."
+        ),
+        source_region=imglog.data.get("region"),
+    )
     return d
 
 
@@ -780,7 +798,15 @@ def _tesseract_subprocess(
         if imglog.enabled:
             tessinput = os.path.join(tmp, "tessinput.tif")
             if os.path.exists(tessinput):
-                imglog.imwrite("tessinput", cv2.imread(tessinput))
+                imglog.imwrite(
+                    "tessinput", cv2.imread(tessinput),
+                    description=(
+                        "The image as binarized internally by Tesseract.  "
+                        "This shows exactly what Tesseract is analysing after "
+                        "its own preprocessing."
+                    ),
+                    source_region=imglog.data.get("region"),
+                )
 
         for filename in glob.glob(tmp + "/output.*"):
             _, ext = os.path.splitext(filename)
@@ -796,7 +822,15 @@ def _upsample(frame, imglog: ImageLogger):
     # http://stb-tester.com/blog/2014/04/14/improving-ocr-accuracy.html
     outsize = (frame.shape[1] * 3, frame.shape[0] * 3)
     frame = cv2.resize(frame, outsize, interpolation=cv2.INTER_LINEAR)
-    imglog.imwrite("upsampled", frame)
+    imglog.imwrite(
+        "upsampled", frame,
+        description=(
+            "The region of interest scaled up 3x using bilinear "
+            "interpolation, as fed to Tesseract.  Upsampling improves OCR "
+            "accuracy on small or low-resolution text."
+        ),
+        source_region=imglog.data.get("region"),
+    )
     return frame
 
 
@@ -925,12 +959,12 @@ def _log_ocr_image_debug(imglog: ImageLogger, output=None):
 
         {% if "upsampled" in images %}
         <h5>ROI Scaled:</h5>
-        <img src="upsampled.png" />
+        {{ img("upsampled") }}
         {% endif %}
 
         {% if "diff" in images %}
         <h5>Color difference {{ text_color }}:</h5>
-        <img src="diff.png" />
+        {{ img("diff") }}
         {% endif %}
 
         {% if "binarized" in images %}
@@ -938,12 +972,12 @@ def _log_ocr_image_debug(imglog: ImageLogger, output=None):
           Color difference – binarised
           (threshold={{ text_color_threshold }}):
         </h5>
-        <img src="binarized.png" />
+        {{ img("binarized") }}
         {% endif %}
 
         {% if "tessinput" in images %}
         <h5>Tesseract's binarisation:</h5>
-        <img src="tessinput.png" />
+        {{ img("tessinput") }}
         {% endif %}
     """
 
