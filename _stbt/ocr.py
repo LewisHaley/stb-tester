@@ -16,7 +16,14 @@ import numpy
 
 from . import imgproc_cache
 from .config import get_config
-from .imgutils import Color, ColorT, crop, FrameT, _frame_repr, _validate_region
+from .imgutils import (
+    Color,
+    ColorT,
+    crop,
+    FrameT,
+    _frame_repr,
+    _validate_region,
+)
 from .logging import debug, draw_source_region, ImageLogger, warn
 from .types import Region
 from .utils import LooseVersion, named_temporary_directory, to_unicode
@@ -890,6 +897,49 @@ def _tesseract_subprocess(
 
             imglog.set(tsv_regions=tsv_regions)
 
+            tsv_words = [x for x in tsv_regions if x[1] == "tsv-word"]
+            if not tsv_words:
+                info_msg = "Note: No words were detected by Tesseract."
+            else:
+                info_msg = (
+                    "This image should have at least a 1px white border "
+                    "around every edge."
+                )
+                bad_borders = []
+                for region, css_class, title in tsv_words:
+                    touching_edge = []
+                    if region.x <= 0:
+                        touching_edge.append("left")
+                    if region.y <= 0:
+                        touching_edge.append("top")
+                    if region.right >= frame.shape[1]:
+                        touching_edge.append("right")
+                    if region.bottom >= frame.shape[0]:
+                        touching_edge.append("bottom")
+                    if touching_edge:
+                        bad_borders.append(
+                            "* The word %s is touching the %s edge(s) of the "
+                            "image.\n" % (
+                                title.replace("\n", " "),
+                                and_join(touching_edge)))
+                if bad_borders:
+                    info_msg += (
+                        "  Note:\n\n" + "".join(bad_borders) +
+                        "\nLack of a border can indicate that:\n"
+                        "\n"
+                        "* The region is too big and it's including some "
+                        "surrounding text that should not be there.\n"
+                        "* The region is too small and the text overlaps "
+                        "the edge of the image, indicating that some of "
+                        "the text might be outside the image\n"
+                        "* There is some non-text background that is "
+                        "surviving thresholding\n"
+                        "\n"
+                        "IMPORTANT: Look at the image to see which of the "
+                        "above issues is the case, and adjust your region "
+                        "or thresholding accordingly."
+                    )
+
             tessinput = os.path.join(tmp, "tessinput.tif")
             if os.path.exists(tessinput):
                 imglog.imwrite(
@@ -897,12 +947,24 @@ def _tesseract_subprocess(
                     description=(
                         "The image as binarized internally by Tesseract.  "
                         "This shows exactly what Tesseract is analysing after "
-                        "its own preprocessing."
+                        "its own preprocessing.  Text is black, background is "
+                        "white\n"
+                        "\n" + info_msg
                     ),
                     source_region=imglog.data.get("region"),
                 )
 
         return txt, hocr
+
+
+def and_join(elems: list[str]) -> str:
+    match elems:
+        case []:
+            return ""
+        case [x]:
+            return x
+        case [*x, y]:
+            return "%s and %s" % (", ".join(x), y)
 
 
 _TSV_LEVEL_TO_TYPE = [None, 'page', 'block', 'paragraph', 'line', 'word']
