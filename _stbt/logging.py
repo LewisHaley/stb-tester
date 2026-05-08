@@ -1,4 +1,5 @@
 import argparse
+import dataclasses
 import itertools
 import logging
 import os
@@ -127,6 +128,17 @@ def filter_traceback(
     return stack_frames
 
 
+@dataclasses.dataclass
+class _ImageMeta:
+    description: str
+    height: int
+    width: int
+    # The region of the source image that this image was derived from, if any.
+    # Usually this will be the same size as the source image, but for example a
+    # heatmap from `match` will be smaller.
+    source_region: "Region | None"
+
+
 class ImageLogger():
     """Log intermediate images used in image processing (such as `match`).
 
@@ -162,6 +174,7 @@ class ImageLogger():
 
         self.images: "OrderedDict[str, FrameT]" = OrderedDict()
         self.image_annotations: "dict[str, list]" = {}
+        self.image_meta: dict[str, _ImageMeta] = {}
         self.data = {}
         for k, v in kwargs.items():
             self.data[k] = v
@@ -185,8 +198,11 @@ class ImageLogger():
             name: str,
             image: "FrameT | None",
             regions: "list[Region] | Region | None" = None,
-            colours: "list[tuple[int, int, int]] | tuple[int, int, int] | None" = None,
+            colours: "list[tuple[int, int, int]] | tuple[int, int, int] | None" = None,  # pylint: disable=line-too-long
             scale: float = 1,
+            *,
+            description: str = "",
+            source_region: "Region | None" = None,
     ):
         import cv2
         import numpy
@@ -196,15 +212,27 @@ class ImageLogger():
             return
         if name in self.images:
             raise ValueError("Image for name '%s' already logged" % name)
-        if image is None:
-            return
         if image.dtype == numpy.float32:
             # Scale `cv2.matchTemplate` heatmap output in range
             # [0.0, 1.0] to visible grayscale range [0, 255].
             image = cv2.convertScaleAbs(image, alpha=255.0 / scale)
         else:
             image = image.copy()
+        if name == "source":
+            if not description:
+                description = (
+                    "Original uncropped source image originally captured from "
+                    "the device under test")
+            if not source_region:
+                source_region = Region(0, 0, image.shape[1], image.shape[0])
+        assert image is not None
         self.images[name] = image
+        self.image_meta[name] = _ImageMeta(
+            description=description,
+            height=image.shape[0],
+            width=image.shape[1],
+            source_region=source_region,
+        )
         if regions is None:
             regions = []
         elif not isinstance(regions, list):
@@ -252,6 +280,7 @@ class ImageLogger():
             f.write(jinja2.Template(dedent(template.lstrip("\n")))
                     .render(annotated_image=self._draw_annotated_image,
                             draw=self._draw,
+                            img=self._img,
                             jupyter=self.jupyter,
                             **template_kwargs))
             f.write(jinja2.Template(_INDEX_HTML_FOOTER, autoescape=True)
@@ -294,6 +323,15 @@ class ImageLogger():
                     region=region,
                     title=title)
 
+    def _img(self, name: str) -> str:
+        import markupsafe
+        if name not in self.images:
+            warn("ImageLogger: No image named '%s'" % name)
+            return ""
+        meta = self.image_meta[name]
+        return markupsafe.Markup('<img src="%s.png" alt="%s" height="%d" width="%d"/>') % (
+            name, meta.description, meta.height, meta.width)
+
     def _draw_annotated_image(self, regions=None, source_name="source"):
         import jinja2
 
@@ -326,12 +364,13 @@ class ImageLogger():
 
         return jinja2.Template(dedent("""\
             <div class="annotated_image">
-              <img src="{{source_name}}.png">
+              <img src="{{source_name}}.png" alt="{{source_name}}"/>
               {% for region, css_class, title in regions %}
               {{ draw(region, source_size, css_class, title) }}
               {% endfor %}
             </div>
         """)).render(
+            img=self._img,
             draw=self._draw,
             regions=_regions,
             source_name=source_name,
@@ -361,6 +400,7 @@ _INDEX_HTML_HEADER = dedent("""\
         .table th { font-weight: normal; background-color: #eee; }
         img.thumb {
             vertical-align: middle; max-width: 150px; max-height: 36px;
+            width: auto; height: auto;
             padding: 1px; border: 1px solid #ccc; }
         .table td { vertical-align: middle; }
     </style>
