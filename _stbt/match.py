@@ -547,10 +547,8 @@ def _find_matches(image, template, match_parameters, imglog: ImageLogger):
             _find_candidate_matches(image, template, match_parameters, imglog):
         confirmed = (
             first_pass_matched and
-            _confirm_match(image, region, template, match_parameters,
-                           imwrite=lambda name, img: imglog.imwrite(
-                               "match%d-%s" % (i, name), img)))  # pylint:disable=cell-var-from-loop
-
+            _confirm_match(image, region, template, match_parameters, imglog, i)
+        )
         yield (confirmed, list(region), first_pass_matched,
                first_pass_certainty)
         if not confirmed:
@@ -857,7 +855,14 @@ class _Size(namedtuple("_Size", "h w")):
     pass
 
 
-def _confirm_match(image, region, template, match_parameters, imwrite):
+def _confirm_match(
+        image,
+        region,
+        template,
+        match_parameters,
+        imglog: ImageLogger,
+        candidate_index: int,
+):
     """Second pass: Confirm that `template` matches `image` at `region`.
 
     This only checks `template` at a single position within `image`, so we can
@@ -877,24 +882,24 @@ def _confirm_match(image, region, template, match_parameters, imwrite):
 
     # Set Region Of Interest to the "best match" location
     image = image[region.y:region.bottom, region.x:region.right]
-    imwrite("confirm-source_roi", image)
+    imglog.imwrite(f"match{candidate_index}-confirm-source_roi", image)
     if image.shape[2] == 3:
         image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         template = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
-    imwrite("confirm-source_roi_gray", image)
-    imwrite("confirm-template_gray", template)
+    imglog.imwrite(f"match{candidate_index}-confirm-source_roi_gray", image)
+    imglog.imwrite(f"match{candidate_index}-confirm-template_gray", template)
 
     if match_parameters.confirm_method == ConfirmMethod.NORMED_ABSDIFF:
         cv2.normalize(image, image, 0, 255, cv2.NORM_MINMAX, mask=mask)
         cv2.normalize(template, template, 0, 255, cv2.NORM_MINMAX, mask=mask)
-        imwrite("confirm-source_roi_gray_normalized", image)
-        imwrite("confirm-template_gray_normalized", template)
+        imglog.imwrite(f"match{candidate_index}-confirm-source_roi_gray_normalized", image)
+        imglog.imwrite(f"match{candidate_index}-confirm-template_gray_normalized", template)
 
     if mask is not None:
         image = cv2.bitwise_and(image, mask)
         template = cv2.bitwise_and(template, mask)
-        imwrite("confirm-source_roi_masked", image)
-        imwrite("confirm-template_masked", template)
+        imglog.imwrite(f"match{candidate_index}-confirm-source_roi_masked", image)
+        imglog.imwrite(f"match{candidate_index}-confirm-template_masked", template)
 
     absdiff = cv2.absdiff(image, template)
     _, thresholded = cv2.threshold(
@@ -904,9 +909,9 @@ def _confirm_match(image, region, template, match_parameters, imwrite):
         thresholded,
         cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)),
         iterations=match_parameters.erode_passes)
-    imwrite("confirm-absdiff", absdiff)
-    imwrite("confirm-absdiff_threshold", thresholded)
-    imwrite("confirm-absdiff_threshold_erode", eroded)
+    imglog.imwrite(f"match{candidate_index}-confirm-absdiff", absdiff)
+    imglog.imwrite(f"match{candidate_index}-confirm-absdiff_threshold", thresholded)
+    imglog.imwrite(f"match{candidate_index}-confirm-absdiff_threshold_erode", eroded)
 
     return cv2.countNonZero(eroded) == 0
 
