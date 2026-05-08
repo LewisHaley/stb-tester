@@ -128,7 +128,7 @@ class _IsScreenBlackResult():
             _frame_repr(self.frame)))
 
 
-def _log_image_debug(imglog, result):
+def _log_image_debug(imglog: ImageLogger, result):
     if not imglog.enabled:
         return
 

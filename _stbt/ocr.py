@@ -605,7 +605,7 @@ def _tesseract_version(output=None):
 
 def _tesseract(frame, region, mode, lang, _config, user_patterns, user_words,
                upsample, text_color, text_color_threshold, engine,
-               char_whitelist, imglog):
+               char_whitelist, imglog: ImageLogger):
 
     if _config is None:
         _config = {}
@@ -659,7 +659,7 @@ def _tesseract(frame, region, mode, lang, _config, user_patterns, user_words,
                                  tesseract_version, use_cache=True)
 
 
-def bgr_diff(frame, color, threshold, imglog):
+def bgr_diff(frame, color, threshold, imglog: ImageLogger):
     # Calculate distance of each pixel from `text_color`, then discard
     # everything further than `text_color_threshold` distance away.
     sqd = numpy.subtract(frame, Color(color).array, dtype=numpy.int32)
@@ -683,7 +683,7 @@ ocr.text_color_differ = bgr_diff
 @imgproc_cache.memoize({"version": "33"})
 def _tesseract_subprocess(
         frame, mode, lang, _config, user_patterns, user_words, upsample,
-        engine, char_whitelist, imglog, tesseract_version):
+        engine, char_whitelist, imglog: ImageLogger, tesseract_version):
 
     if tesseract_version >= [4, 0]:
         engine_flags = ["--oem", str(int(engine))]
@@ -789,7 +789,7 @@ def _tesseract_subprocess(
                     return f.read()
 
 
-def _upsample(frame, imglog):
+def _upsample(frame, imglog: ImageLogger):
     # We scale image up 3x before feeding it to tesseract as this
     # significantly reduces the error rate by more than 6x in tests.  This
     # uses bilinear interpolation which produces the best results.  See
@@ -871,7 +871,7 @@ def _find_tessdata_dir(tessdata_suffix):
     raise RuntimeError('Installation error: Cannot locate tessdata directory')
 
 
-def _log_ocr_image_debug(imglog, output=None):
+def _log_ocr_image_debug(imglog: ImageLogger, output=None):
     if not imglog.enabled:
         return
 

@@ -531,7 +531,7 @@ class MatchTimeout(UITestFailure):
 
 
 @memoize_iterator({"version": "33"})
-def _find_matches(image, template, match_parameters, imglog):
+def _find_matches(image, template, match_parameters, imglog: ImageLogger):
     """Our image-matching algorithm.
 
     Runs 2 passes: `_find_candidate_matches` to locate potential matches, then
@@ -557,7 +557,12 @@ def _find_matches(image, template, match_parameters, imglog):
             break
 
 
-def _find_candidate_matches(image, template, match_parameters, imglog):
+def _find_candidate_matches(
+        image,
+        template,
+        match_parameters,
+        imglog: ImageLogger,
+):
     """First pass: Search for `template` in the entire `image`.
 
     This searches the entire image, so speed is more important than accuracy.
@@ -919,7 +924,7 @@ def _merge_regions(regions):
         i -= 1
 
 
-def _log_match_image_debug(imglog):
+def _log_match_image_debug(imglog: ImageLogger):
     if not imglog.enabled:
         return
 
