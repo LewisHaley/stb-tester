@@ -64,19 +64,25 @@ This image is annotated with the following regions:
 
 
 <h5>Previous frame:</h5>
-<img src="previous_frame.png" />
+<img src="previous_frame.png" title="Previous video frame, compared against the current frame to detect differences." height="400" width="640" >
 
 <h5>Differences:</h5>
-<img src="sqd.png" />
+<img src="sqd.png" title="Pixel-by-pixel BGR colour distance between the current and previous frame (normalised to 0-255). Brighter pixels indicate larger colour differences.
+
+This image was derived from the source image by cropping to the region Region(x=0, y=0, right=320, bottom=400)." height="400" width="320" >
 
 
 
 <h5>Differences above threshold (25):</h5>
-<img src="thresholded.png" />
+<img src="thresholded.png" title="Binary image showing pixels where the BGR colour distance between the current and previous frame exceeded the threshold (25). White pixels indicate detected differences.
+
+This image was derived from the source image by cropping to the region Region(x=0, y=0, right=320, bottom=400)." height="400" width="320" >
 
 
 <h5>Eroded:</h5>
-<img src="eroded.png" />
+<img src="eroded.png" title="Thresholded difference image after morphological opening (erosion followed by dilation) to remove single-pixel noise. Remaining white pixels indicate differences.
+
+This image was derived from the source image by cropping to the region Region(x=0, y=0, right=320, bottom=400)." height="400" width="320" >
     <h2>Call stack</h2>
     <pre>Traceback (most recent call last):
 </pre>
