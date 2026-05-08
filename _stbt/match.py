@@ -628,12 +628,9 @@ def _find_candidate_matches(
             else:
                 roi_mask = cv2.pyrUp(roi_mask)
 
-        def imwrite(name, img, scale=1):
-            imglog.imwrite("level%d-%s" % (level, name), img, scale=scale)  # pylint:disable=cell-var-from-loop
-
         heatmap, heatmap_scale = _match_template(
             image_pyramid[level], template_pyramid[level], mask_pyramid[level],
-            method, roi_mask, level, imwrite)
+            method, roi_mask, level, imglog)
 
         # Relax the threshold slightly for scaled-down pyramid levels to
         # compensate for scaling artifacts.
@@ -660,7 +657,8 @@ def _find_candidate_matches(
                 255,
                 cv2.THRESH_BINARY_INV)
             roi_mask = roi_mask.astype(numpy.uint8)
-            imwrite("source_matchtemplate_threshold", roi_mask)
+            imglog.imwrite(
+                "level%d-source_matchtemplate_threshold" % level, roi_mask)
 
     region = Region(*_upsample(best_match_position, level),
                     width=template.shape[1], height=template.shape[0])
@@ -690,7 +688,8 @@ def _find_candidate_matches(
                         width=template.shape[1], height=template.shape[0])
 
 
-def _match_template(image, template, mask, method, roi_mask, level, imwrite):
+def _match_template(
+        image, template, mask, method, roi_mask, level, imglog: ImageLogger):
 
     ddebug("Level %d: image %s, template %s" % (
         level, image.shape, template.shape))
@@ -738,7 +737,8 @@ def _match_template(image, template, mask, method, roi_mask, level, imwrite):
                  min(s.h - 1, r.bottom + t.h - 1)),
                 (0, 255, 255),
                 thickness=1)
-        imwrite("source_with_rois", source_with_rois)
+        imglog.imwrite(
+            "level%d-source_with_rois" % level, source_with_rois)
 
     if mask is not None:
         kwargs = {"mask": mask}
@@ -778,10 +778,11 @@ def _match_template(image, template, mask, method, roi_mask, level, imwrite):
     if method in (cv2.TM_CCORR_NORMED, cv2.TM_CCOEFF_NORMED):
         matches_heatmap = 1 - matches_heatmap
 
-    imwrite("source", image)
-    imwrite("template", template)
-    imwrite("mask", mask)
-    imwrite("source_matchtemplate", matches_heatmap, scale=scale)
+    imglog.imwrite("level%d-source" % level, image)
+    imglog.imwrite("level%d-template" % level, template)
+    imglog.imwrite("level%d-mask" % level, mask)
+    imglog.imwrite(
+        "level%d-source_matchtemplate" % level, matches_heatmap, scale=scale)
 
     return matches_heatmap, scale
 
