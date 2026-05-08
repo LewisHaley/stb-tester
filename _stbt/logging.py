@@ -327,7 +327,7 @@ class ImageLogger():
                     region=region,
                     title=title)
 
-    def _img(self, name: str, attrs: str = "") -> str:
+    def _img(self, name: str, attrs: str = "", desc_suffix: str = "") -> str:
         import markupsafe
         if name not in self.images:
             warn("ImageLogger: No image named '%s'" % name)
@@ -344,6 +344,8 @@ class ImageLogger():
                 title += (
                     "\n\nThis image was derived from the source image by "
                     "cropping to the region %s." % (meta.source_region,))
+        if desc_suffix:
+            title += "\n\n" + desc_suffix
         return markupsafe.Markup(
             '<img src="%s.png" title="%s" height="%d" width="%d" %s>') % (
             name, title, meta.height, meta.width, attrs)
@@ -354,7 +356,7 @@ class ImageLogger():
         s = self.images[source_name].shape
         source_size = Region(0, 0, s[1], s[0])
 
-        _regions = []
+        _regions: list[tuple[Region, str | bool | None, str | None]] = []
         if "region" in self.data:
             _regions.append((Region.intersect(self.data["region"], source_size),
                              "source_region", None))
@@ -365,9 +367,9 @@ class ImageLogger():
             regions = [regions]
         for r in regions:
             if isinstance(r, Region):
-                _regions.append((r, True, None))
+                _regions.append((r, "matched", None))
             elif hasattr(r, "region"):  # e.g. MotionResult
-                _regions.append((r.region, bool(r), None))
+                _regions.append((r.region, "matched" if r else "nomatch", None))
             elif isinstance(r, tuple) and len(r) == 3:
                 _regions.append(r)
             else:
@@ -378,9 +380,20 @@ class ImageLogger():
         self.image_annotations[source_name] = [
             {"region": region, "title": title} for region, _, title in _regions]
 
+        desc_suffix = ""
+        if _regions:
+            desc_suffix = (
+                "This image is annotated with the following regions:\n\n" +
+                "\n".join(
+                    "* %s: %s class: %s" % (
+                        (title or "Region").replace("\n", " "),
+                        region,
+                        css_class)
+                    for region, css_class, title in _regions))
+
         return jinja2.Template(dedent("""\
             <div class="annotated_image">
-              <img src="{{source_name}}.png" alt="{{source_name}}"/>
+              {{ img(source_name, desc_suffix=desc_suffix) }}
               {% for region, css_class, title in regions %}
               {{ draw(region, source_size, css_class, title) }}
               {% endfor %}
@@ -391,6 +404,7 @@ class ImageLogger():
             regions=_regions,
             source_name=source_name,
             source_size=source_size,
+            desc_suffix=desc_suffix,
         )
 
 
