@@ -953,17 +953,20 @@ def _log_match_image_debug(imglog: ImageLogger):
             else _Annotation.NO_MATCH)
 
     template = """\
+        {% macro thumb(name) -%}
+            <a href="{{name}}.png" target="_blank">{{img(name, 'class=thumb')}}</a>
+        {%- endmacro %}
         <h4>{{title}}</h4>
 
         {{ annotated_image(matches) }}
 
         <h5>First pass (find candidate matches):</h5>
 
-        <p>Searching for <b>template</b> {{link("template")}}
+        <p>Searching for <b>template</b> {{thumb("template")}}
             {% if "mask" in images %}
-            with <b>transparency mask</b> {{link("mask")}}
+            with <b>transparency mask</b> {{thumb("mask")}}
             {% endif %}
-            within <b>source</b> image {{link("source")}}</p>
+            within <b>source</b> image {{thumb("source")}}</p>
 
         {% if fast_path %}
         <p>Taking fast path - template shape <code>{{ template_shape }}</code>
@@ -1012,19 +1015,19 @@ def _log_match_image_debug(imglog: ImageLogger):
           <td><b>{{level}}</b></td>
           <td><b>{{"0" if level == 0 else ""}}</b></td>
           <td>
-            {{link("template", level)}}
+            {{thumb("level%i-template" % level)}}
             {% if "mask" in images %}
-            {{link("mask", level)}}
+            {{thumb("level%i-mask" % level)}}
             {% endif %}
           </td>
-          <td>{{link("source_with_rois", level)}}</td>
-          <td>{{link("source_matchtemplate", level)}}</td>
+          <td>{{thumb("level%i-source_with_rois" % level)}}</td>
+          <td>{{thumb("level%i-source_matchtemplate" % level)}}</td>
           <td>
-            {{link("source_matchtemplate_threshold", level) if matched else ""}}
+            {{thumb("level%i-source_matchtemplate_threshold" % level) if matched else ""}}
           </td>
           <td>{{"Matched" if matched else "Didn't match"}}</td>
           <td>{{position if level > 0 else matches[0].region}}</td>
-          <td>{{link("source_with_match", level)}}</td>
+          <td>{{thumb("level%i-source_with_match" % level)}}</td>
           <td>{{"%.4f"|format(certainty)}}</td>
         </tr>
         {% endfor %}
@@ -1036,11 +1039,11 @@ def _log_match_image_debug(imglog: ImageLogger):
           <td><b>{{loop.index}}</b></td>
           <td>&nbsp;</td>
           <td>&nbsp;</td>
-          <td>{{link("heatmap", match=loop.index)}}</td>
+          <td>{{thumb("match%i-heatmap" % loop.index)}}</td>
           <td></td>
           <td>{{"Matched" if m._first_pass_matched else "Didn't match"}}</td>
           <td>{{m.region}}</td>
-          <td>{{link("source_with_match", match=loop.index)}}</td>
+          <td>{{thumb("match%i-source_with_match" % loop.index)}}</td>
           <td>{{"%.4f"|format(m.first_pass_result)}}</td>
         </tr>
         {% endfor %}
@@ -1082,16 +1085,16 @@ def _log_match_image_debug(imglog: ImageLogger):
               {% if m._first_pass_matched %}
                 <tr>
                   <td><b>{{loop.index0}}</b></td>
-                  <td>{{link("confirm-template_gray", match=0)}}</td>
-                  <td>{{link("confirm-source_roi_gray", match=loop.index0)}}</td>
+                  <td>{{thumb("match%i-confirm-template_gray" % loop.index0)}}</td>
+                  <td>{{thumb("match%i-confirm-source_roi_gray" % loop.index0)}}</td>
                   {% if match_parameters.confirm_method ==
                              ConfirmMethod.NORMED_ABSDIFF %}
-                    <td>{{link("confirm-template_gray_normalized", match=loop.index0)}}</td>
-                    <td>{{link("confirm-source_roi_gray_normalized", match=loop.index0)}}</td>
+                    <td>{{thumb("match%i-confirm-template_gray_normalized" % loop.index0)}}</td>
+                    <td>{{thumb("match%i-confirm-source_roi_gray_normalized" % loop.index0)}}</td>
                   {% endif %}
-                  <td>{{link("confirm-absdiff", match=loop.index0)}}</td>
-                  <td>{{link("confirm-absdiff_threshold", match=loop.index0)}}</td>
-                  <td>{{link("confirm-absdiff_threshold_erode", match=loop.index0)}}</td>
+                  <td>{{thumb("match%i-confirm-absdiff" % loop.index0)}}</td>
+                  <td>{{thumb("match%i-confirm-absdiff_threshold" % loop.index0)}}</td>
+                  <td>{{thumb("match%i-confirm-absdiff_threshold_erode" % loop.index0)}}</td>
                 </tr>
               {% endif %}
             {% endfor %}
@@ -1101,18 +1104,10 @@ def _log_match_image_debug(imglog: ImageLogger):
         {% endif %}
     """
 
-    def link(name, level=None, match=None):  # pylint: disable=redefined-outer-name
-        return ("<a href='{0}{1}{2}.png'><img src='{0}{1}{2}.png'"
-                " class='thumb'></a>"
-                .format("" if level is None else "level%d-" % level,
-                        "" if match is None else "match%d-" % match,
-                        name))
-
     imglog.html(
         template,
         ConfirmMethod=ConfirmMethod,
         fast_path=imglog.data.get("fast_path"),
-        link=link,
         MatchMethod=MatchMethod,
         show_second_pass=any(
             x._first_pass_matched for x in imglog.data["matches"]),

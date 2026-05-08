@@ -323,14 +323,15 @@ class ImageLogger():
                     region=region,
                     title=title)
 
-    def _img(self, name: str) -> str:
+    def _img(self, name: str, attrs: str = "") -> str:
         import markupsafe
         if name not in self.images:
             warn("ImageLogger: No image named '%s'" % name)
             return ""
         meta = self.image_meta[name]
-        return markupsafe.Markup('<img src="%s.png" alt="%s" height="%d" width="%d"/>') % (
-            name, meta.description, meta.height, meta.width)
+        return markupsafe.Markup(
+            '<img src="%s.png" alt="%s" height="%d" width="%d" %s>') % (
+            name, meta.description, meta.height, meta.width, attrs)
 
     def _draw_annotated_image(self, regions=None, source_name="source"):
         import jinja2
