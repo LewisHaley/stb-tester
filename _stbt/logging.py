@@ -333,9 +333,20 @@ class ImageLogger():
             warn("ImageLogger: No image named '%s'" % name)
             return ""
         meta = self.image_meta[name]
+        title = meta.description
+        if meta.source_region and name != "source":
+            src = self.image_meta["source"]
+            if meta.source_region == Region(0, 0, src.width, src.height):
+                title += (
+                    "\n\nThis image was derived from the source image without "
+                    "cropping.")
+            else:
+                title += (
+                    "\n\nThis image was derived from the source image by "
+                    "cropping to the region %s." % (meta.source_region,))
         return markupsafe.Markup(
-            '<img src="%s.png" alt="%s" height="%d" width="%d" %s>') % (
-            name, meta.description, meta.height, meta.width, attrs)
+            '<img src="%s.png" title="%s" height="%d" width="%d" %s>') % (
+            name, title, meta.height, meta.width, attrs)
 
     def _draw_annotated_image(self, regions=None, source_name="source"):
         import jinja2

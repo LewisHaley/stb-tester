@@ -59,7 +59,9 @@
 
 
 <h5>Grayscale, masked:</h5>
-<img src="gray.png" alt="Grayscale version of the relevant portion of the source image after cropping to the region of interest (Region(x=0, y=0, right=160, bottom=120)).  The values here are in the range 0 (black) to 255 (white) and will be compared against the threshold (20) to determine whether the screen is black. The maximum pixel intensity in this image is 255." height="120" width="160" >
+<img src="gray.png" title="Grayscale version of the relevant portion of the source image after cropping to the region of interest (Region(x=0, y=0, right=160, bottom=120)).  The values here are in the range 0 (black) to 255 (white) and will be compared against the threshold (20) to determine whether the screen is black. The maximum pixel intensity in this image is 255.
+
+This image was derived from the source image by cropping to the region Region(x=0, y=0, right=160, bottom=120)." height="120" width="160" >
 <ul>
   <li>Maximum pixel intensity: 255
   <li>threshold=20
@@ -67,7 +69,9 @@
 
 
 <h5>Non-black pixels in region:</h5>
-<img src="non_black.png" alt="Binary image showing the pixels that were considered non-black after applying the threshold. The white pixels in this image indicate the pixels that were considered non-black and the black pixels indicate the pixels that were considered black.  This corresponds to the region {region} of the source image." height="120" width="160" >
+<img src="non_black.png" title="Binary image showing the pixels that were considered non-black after applying the threshold. The white pixels in this image indicate the pixels that were considered non-black and the black pixels indicate the pixels that were considered black.  This corresponds to the region {region} of the source image.
+
+This image was derived from the source image by cropping to the region Region(x=0, y=0, right=160, bottom=120)." height="120" width="160" >
     <h2>Call stack</h2>
     <pre>Traceback (most recent call last):
 </pre>
