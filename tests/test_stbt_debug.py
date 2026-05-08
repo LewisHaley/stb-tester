@@ -1,5 +1,6 @@
 import itertools
 import os
+import shutil
 import subprocess
 
 import pytest
@@ -519,10 +520,10 @@ def test_is_screen_black_debug(tmp_path):
 def assert_expected(expected, stbt_debug_dir):
     expected = _find_file(expected)
 
-    # To update expected results in source checkout:
-    # import shutil
-    # shutil.rmtree(expected)
-    # shutil.move("stbt-debug", expected)
+    if os.environ.get("REGENERATE_TEST_DATA") == "1":
+        if os.path.exists(expected):
+            shutil.rmtree(expected)
+        shutil.copytree(stbt_debug_dir, expected)
 
     subprocess.check_call([
         "diff", "-u", "-r", "--exclude=*.png",
