@@ -571,10 +571,21 @@ def _find_candidate_matches(
     http://opencv-code.com/tutorials/fast-template-matching-with-image-pyramid
     """
 
-    imglog.imwrite("template", template)
+    imglog.imwrite(
+        "template", template,
+        description=(
+            "Reference image (template) being searched for within the source "
+            "frame."
+        ))
     imglog.set(template_shape=template.shape)
     if template.shape[2] == 4:
-        imglog.imwrite("mask", template[:, :, 3])
+        imglog.imwrite(
+            "mask", template[:, :, 3],
+            description=(
+                "Alpha channel of the reference image used as a transparency "
+                "mask. White (255) pixels are included in the match "
+                "calculation; black (0) pixels are ignored."
+            ))
 
     ddebug("Original image %s, template %s" % (image.shape, template.shape))
 
@@ -658,14 +669,30 @@ def _find_candidate_matches(
                 cv2.THRESH_BINARY_INV)
             roi_mask = roi_mask.astype(numpy.uint8)
             imglog.imwrite(
-                "level%d-source_matchtemplate_threshold" % level, roi_mask)
+                "level%d-source_matchtemplate_threshold" % level, roi_mask,
+                description=(
+                    "Thresholded matchTemplate heatmap at pyramid level "
+                    f"{level}. White pixels are positions where the match "
+                    "score exceeded the threshold and are passed as regions of "
+                    "interest to the next pyramid level."
+                ),
+                source_region=imglog.data["region"])
 
     region = Region(*_upsample(best_match_position, level),
                     width=template.shape[1], height=template.shape[0])
 
     for i in itertools.count():
 
-        imglog.imwrite("match%d-heatmap" % i, heatmap, scale=heatmap_scale)
+        imglog.imwrite(
+            "match%d-heatmap" % i, heatmap, scale=heatmap_scale,
+            description=(
+                f"matchTemplate heatmap for match candidate {i} at pyramid "
+                "level 0. Darker pixels indicate positions where the template "
+                "matches better. This image is smaller than the source region "
+                "by (template_size - 1) because it only represents positions "
+                "where the full template fits."
+            ),
+            source_region=imglog.data["region"])
         yield (i, matched, region, certainty)
         if not matched:
             return
@@ -738,7 +765,14 @@ def _match_template(
                 (0, 255, 255),
                 thickness=1)
         imglog.imwrite(
-            "level%d-source_with_rois" % level, source_with_rois)
+            "level%d-source_with_rois" % level, source_with_rois,
+            description=(
+                f"Source image at pyramid level {level} with the regions of "
+                "interest (ROIs) highlighted in yellow (#ffff00). Template "
+                "matching is performed only within these ROIs, guided by match "
+                "positions found at the previous pyramid level."
+            ),
+            source_region=imglog.data["region"])
 
     if mask is not None:
         kwargs = {"mask": mask}
@@ -778,11 +812,34 @@ def _match_template(
     if method in (cv2.TM_CCORR_NORMED, cv2.TM_CCOEFF_NORMED):
         matches_heatmap = 1 - matches_heatmap
 
-    imglog.imwrite("level%d-source" % level, image)
-    imglog.imwrite("level%d-template" % level, template)
-    imglog.imwrite("level%d-mask" % level, mask)
     imglog.imwrite(
-        "level%d-source_matchtemplate" % level, matches_heatmap, scale=scale)
+        "level%d-source" % level, image,
+        description=(
+            "Source image (cropped to the search region) at pyramid level "
+            f"{level}. Higher pyramid levels are downsampled for faster coarse "
+            "matching."
+        ),
+        source_region=imglog.data["region"])
+    imglog.imwrite(
+        "level%d-template" % level, template,
+        description=f"Reference image (template) at pyramid level {level}.")
+    imglog.imwrite(
+        "level%d-mask" % level, mask,
+        description=(
+            "Transparency mask for the reference image at pyramid level "
+            f"{level}. White pixels are included in matching; black pixels are "
+            "ignored."
+        ))
+    imglog.imwrite(
+        "level%d-source_matchtemplate" % level, matches_heatmap, scale=scale,
+        description=(
+            f"matchTemplate heatmap at pyramid level {level}. "
+            "Darker pixels indicate positions where the template matches "
+            "better. This image is smaller than the source region by "
+            "(template_size - 1) because it only represents positions where "
+            "the full template fits."
+        ),
+        source_region=imglog.data["region"])
 
     return matches_heatmap, scale
 
@@ -883,24 +940,70 @@ def _confirm_match(
 
     # Set Region Of Interest to the "best match" location
     image = image[region.y:region.bottom, region.x:region.right]
-    imglog.imwrite(f"match{candidate_index}-confirm-source_roi", image)
+    confirm_source_region = region.translate(imglog.data["region"])
+    imglog.imwrite(
+        f"match{candidate_index}-confirm-source_roi", image,
+        description=(
+            f"Region of the source frame for match candidate {candidate_index} "
+            f"({confirm_source_region}). This is the candidate region "
+            "identified by the first pass; this second pass confirms whether "
+            "it actually matches the template."
+        ),
+        source_region=confirm_source_region)
     if image.shape[2] == 3:
         image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         template = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
-    imglog.imwrite(f"match{candidate_index}-confirm-source_roi_gray", image)
-    imglog.imwrite(f"match{candidate_index}-confirm-template_gray", template)
+    imglog.imwrite(
+        f"match{candidate_index}-confirm-source_roi_gray", image,
+        description=(
+            f"Grayscale version of the source region for match candidate "
+            f"{candidate_index}."
+        ),
+        source_region=confirm_source_region)
+    imglog.imwrite(
+        f"match{candidate_index}-confirm-template_gray", template,
+        description=(
+            f"Grayscale version of the reference image (template) for match "
+            f"candidate {candidate_index}."
+        ))
 
     if match_parameters.confirm_method == ConfirmMethod.NORMED_ABSDIFF:
         cv2.normalize(image, image, 0, 255, cv2.NORM_MINMAX, mask=mask)
         cv2.normalize(template, template, 0, 255, cv2.NORM_MINMAX, mask=mask)
-        imglog.imwrite(f"match{candidate_index}-confirm-source_roi_gray_normalized", image)
-        imglog.imwrite(f"match{candidate_index}-confirm-template_gray_normalized", template)
+        imglog.imwrite(
+            f"match{candidate_index}-confirm-source_roi_gray_normalized", image,
+            description=(
+                f"Normalised grayscale source region for match candidate "
+                f"{candidate_index}. Pixel values are normalised to the full "
+                "0-255 range to reduce the effect of overall brightness "
+                "differences."
+            ),
+            source_region=confirm_source_region)
+        imglog.imwrite(
+            f"match{candidate_index}-confirm-template_gray_normalized",
+            template,
+            description=(
+                f"Normalised grayscale reference image (template) for match "
+                f"candidate {candidate_index}."
+            ))
 
     if mask is not None:
         image = cv2.bitwise_and(image, mask)
         template = cv2.bitwise_and(template, mask)
-        imglog.imwrite(f"match{candidate_index}-confirm-source_roi_masked", image)
-        imglog.imwrite(f"match{candidate_index}-confirm-template_masked", template)
+        imglog.imwrite(
+            f"match{candidate_index}-confirm-source_roi_masked", image,
+            description=(
+                f"Source region for match candidate {candidate_index} after "
+                "applying the transparency mask. Only non-masked pixels "
+                "contribute to the match score."
+            ),
+            source_region=confirm_source_region)
+        imglog.imwrite(
+            f"match{candidate_index}-confirm-template_masked", template,
+            description=(
+                "Reference image (template) for match candidate "
+                f"{candidate_index} after applying the transparency mask."
+            ))
 
     absdiff = cv2.absdiff(image, template)
     _, thresholded = cv2.threshold(
@@ -910,9 +1013,33 @@ def _confirm_match(
         thresholded,
         cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)),
         iterations=match_parameters.erode_passes)
-    imglog.imwrite(f"match{candidate_index}-confirm-absdiff", absdiff)
-    imglog.imwrite(f"match{candidate_index}-confirm-absdiff_threshold", thresholded)
-    imglog.imwrite(f"match{candidate_index}-confirm-absdiff_threshold_erode", eroded)
+    imglog.imwrite(
+        f"match{candidate_index}-confirm-absdiff", absdiff,
+        description=(
+            f"Absolute pixel-by-pixel difference between the source region and "
+            f"template for match candidate {candidate_index}. Brighter pixels "
+            "indicate larger differences; black means identical."
+        ),
+        source_region=confirm_source_region)
+    imglog.imwrite(
+        f"match{candidate_index}-confirm-absdiff_threshold", thresholded,
+        description=(
+            f"Binary image showing pixels that exceed the confirm_threshold "
+            f"({match_parameters.confirm_threshold}) for match candidate "
+            f"{candidate_index}. White pixels are differences large enough to "
+            "potentially disqualify the match."
+        ),
+        source_region=confirm_source_region)
+    imglog.imwrite(
+        f"match{candidate_index}-confirm-absdiff_threshold_erode", eroded,
+        description=(
+            f"Thresholded difference image after erosion for match candidate "
+            f"{candidate_index}. Single-pixel noise is removed by eroding "
+            f"{match_parameters.erode_passes} "
+            f"{'time' if match_parameters.erode_passes == 1 else 'times'}. "
+            "The match is confirmed if no white pixels remain."
+        ),
+        source_region=confirm_source_region)
 
     return cv2.countNonZero(eroded) == 0
 
@@ -940,18 +1067,32 @@ def _log_match_image_debug(imglog: ImageLogger):
 
     for matched, position, _, level in imglog.data.get("pyramid_levels", []):
         template = imglog.images["level%d-template" % level]
-        imglog.imwrite("level%d-source_with_match" % level,
-                       imglog.images["level%d-source" % level],
-                       Region(x=position.x, y=position.y,
-                              width=template.shape[1],
-                              height=template.shape[0]),
-                       _Annotation.MATCHED if matched else _Annotation.NO_MATCH)
+        best_match_region = Region(
+            position.x, position.y, template.shape[1], template.shape[0])
+        if matched:
+            desc = "match position annotated in red (#ff0020)"
+        else:
+            desc = "position of best match highlighted in yellow (#ffff20)"
+        imglog.imwrite(
+            "level%d-source_with_match" % level,
+            imglog.images["level%d-source" % level],
+            regions=[best_match_region],
+            colours=[_Annotation.MATCHED if matched else _Annotation.NO_MATCH],
+            description=(
+                f"Source image at pyramid level {level} with the {desc}"
+            ),
+            source_region=imglog.data["region"])
 
     for i, result in enumerate(imglog.data["matches"]):
+        source = imglog.images["source"]
         imglog.imwrite(
-            "match%d-source_with_match" % i, imglog.images["source"],
+            "match%d-source_with_match" % i, source,
             result.region, _Annotation.MATCHED if result._first_pass_matched
-            else _Annotation.NO_MATCH)
+            else _Annotation.NO_MATCH,
+            description=(
+                f"Full source frame with match candidate {i} annotated."
+            ),
+            source_region=Region(0, 0, source.shape[1], source.shape[0]))
 
     template = """\
         {% macro thumb(name) -%}

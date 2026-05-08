@@ -56,7 +56,7 @@
 
 <h5>First pass (find candidate matches):</h5>
 
-<p>Searching for <b>template</b> <a href="template.png" target="_blank"><img src="template.png" alt="" height="160" width="92" class=thumb></a>
+<p>Searching for <b>template</b> <a href="template.png" target="_blank"><img src="template.png" alt="Reference image (template) being searched for within the source frame." height="160" width="92" class=thumb></a>
     
     within <b>source</b> image <a href="source.png" target="_blank"><img src="source.png" alt="Original uncropped source image originally captured from the device under test" height="240" width="320" class=thumb></a></p>
 
@@ -88,17 +88,17 @@
   <td><b>2</b></td>
   <td><b></b></td>
   <td>
-    <a href="level2-template.png" target="_blank"><img src="level2-template.png" alt="" height="38" width="21" class=thumb></a>
+    <a href="level2-template.png" target="_blank"><img src="level2-template.png" alt="Reference image (template) at pyramid level 2." height="38" width="21" class=thumb></a>
     
   </td>
-  <td><a href="level2-source_with_rois.png" target="_blank"><img src="level2-source_with_rois.png" alt="" height="59" width="79" class=thumb></a></td>
-  <td><a href="level2-source_matchtemplate.png" target="_blank"><img src="level2-source_matchtemplate.png" alt="" height="22" width="59" class=thumb></a></td>
+  <td><a href="level2-source_with_rois.png" target="_blank"><img src="level2-source_with_rois.png" alt="Source image at pyramid level 2 with the regions of interest (ROIs) highlighted in yellow (#ffff00). Template matching is performed only within these ROIs, guided by match positions found at the previous pyramid level." height="59" width="79" class=thumb></a></td>
+  <td><a href="level2-source_matchtemplate.png" target="_blank"><img src="level2-source_matchtemplate.png" alt="matchTemplate heatmap at pyramid level 2. Darker pixels indicate positions where the template matches better. This image is smaller than the source region by (template_size - 1) because it only represents positions where the full template fits." height="22" width="59" class=thumb></a></td>
   <td>
     
   </td>
   <td>Didn't match</td>
   <td>Position(x=45, y=2)</td>
-  <td><a href="level2-source_with_match.png" target="_blank"><img src="level2-source_with_match.png" alt="" height="59" width="79" class=thumb></a></td>
+  <td><a href="level2-source_with_match.png" target="_blank"><img src="level2-source_with_match.png" alt="Source image at pyramid level 2 with the position of best match highlighted in yellow (#ffff20)" height="59" width="79" class=thumb></a></td>
   <td>0.8351</td>
 </tr>
 
