@@ -149,6 +149,7 @@ class ImageLogger():
     def __init__(self, name: str, **kwargs):
         self.jupyter = _jupyter_logging_enabled
         self.enabled = get_debug_level() > 1 or self.jupyter
+        self.data = {}
         if not self.enabled:
             return
 
@@ -162,6 +163,10 @@ class ImageLogger():
             # Store this for the summary later
             image_loggers.append(self)
 
+        self.images: "OrderedDict[str, FrameT]" = OrderedDict()
+        self.image_annotations: "dict[str, list]" = {}
+        self.image_meta: dict[str, _ImageMeta] = {}
+
         outdir = os.path.join("stbt-debug", "%05d" % self.frame_number)
         try:
             mkdir_p(outdir)
@@ -172,10 +177,6 @@ class ImageLogger():
             self.enabled = False
             return
 
-        self.images: "OrderedDict[str, FrameT]" = OrderedDict()
-        self.image_annotations: "dict[str, list]" = {}
-        self.image_meta: dict[str, _ImageMeta] = {}
-        self.data = {}
         for k, v in kwargs.items():
             self.data[k] = v
 
@@ -202,7 +203,7 @@ class ImageLogger():
             scale: float = 1,
             *,
             description: str = "",
-            source_region: "Region | None" = None,
+            source_region: "Region | None | str" = None,
     ):
         import cv2
         import numpy
@@ -218,6 +219,9 @@ class ImageLogger():
             image = cv2.convertScaleAbs(image, alpha=255.0 / scale)
         else:
             image = image.copy()
+        if isinstance(source_region, str):
+            source_region = self.data[source_region]
+            assert isinstance(source_region, (Region, type(None)))
         if name == "source":
             if not description:
                 description = (

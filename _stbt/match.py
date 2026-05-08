@@ -676,7 +676,7 @@ def _find_candidate_matches(
                     "score exceeded the threshold and are passed as regions of "
                     "interest to the next pyramid level."
                 ),
-                source_region=imglog.data["region"])
+                source_region="region")
 
     region = Region(*_upsample(best_match_position, level),
                     width=template.shape[1], height=template.shape[0])
@@ -692,7 +692,7 @@ def _find_candidate_matches(
                 "by (template_size - 1) because it only represents positions "
                 "where the full template fits."
             ),
-            source_region=imglog.data["region"])
+            source_region="region")
         yield (i, matched, region, certainty)
         if not matched:
             return
@@ -772,7 +772,7 @@ def _match_template(
                 "matching is performed only within these ROIs, guided by match "
                 "positions found at the previous pyramid level."
             ),
-            source_region=imglog.data["region"])
+            source_region="region")
 
     if mask is not None:
         kwargs = {"mask": mask}
@@ -819,7 +819,7 @@ def _match_template(
             f"{level}. Higher pyramid levels are downsampled for faster coarse "
             "matching."
         ),
-        source_region=imglog.data["region"])
+        source_region="region")
     imglog.imwrite(
         "level%d-template" % level, template,
         description=f"Reference image (template) at pyramid level {level}.")
@@ -839,7 +839,7 @@ def _match_template(
             "(template_size - 1) because it only represents positions where "
             "the full template fits."
         ),
-        source_region=imglog.data["region"])
+        source_region="region")
 
     return matches_heatmap, scale
 
@@ -940,7 +940,7 @@ def _confirm_match(
 
     # Set Region Of Interest to the "best match" location
     image = image[region.y:region.bottom, region.x:region.right]
-    confirm_source_region = region.translate(imglog.data["region"])
+    confirm_source_region = region.translate(imglog.data.get("region"))
     imglog.imwrite(
         f"match{candidate_index}-confirm-source_roi", image,
         description=(
@@ -1081,7 +1081,7 @@ def _log_match_image_debug(imglog: ImageLogger):
             description=(
                 f"Source image at pyramid level {level} with the {desc}"
             ),
-            source_region=imglog.data["region"])
+            source_region="region")
 
     for i, result in enumerate(imglog.data["matches"]):
         source = imglog.images["source"]
