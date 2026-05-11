@@ -139,18 +139,10 @@ def test_that_setting_config_options_has_an_effect():
     # option is having the correct effect.  Due to the difficulty in determining
     # "correctness" instead here we test that setting a config option has an
     # effect at all.  This at least excercises our code which sets config
-    # options.  I'm not happy about this and I hope to be able to replace this
-    # once we have more experience with these settings in the real world.
-    if _tesseract_version() >= [3, 4]:
-        hocr_mode_config = {
-            "tessedit_create_txt": 0,
-            "tessedit_create_hocr": 1}
-    else:
-        hocr_mode_config = {
-            "tessedit_create_hocr": 1}
-
+    # options.
+    alt_config = {'tessedit_char_blacklist': 'e'}
     assert (stbt.ocr(frame=load_image('ocr/ambig.png'),
-                     tesseract_config=hocr_mode_config) !=
+                     tesseract_config=alt_config) !=
             stbt.ocr(frame=load_image('ocr/ambig.png')))
 
 

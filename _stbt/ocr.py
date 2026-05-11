@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import collections
 import errno
-import glob
 import os
 import re
 import shutil
@@ -288,13 +287,16 @@ def ocr(
     if upsample is None:
         upsample = get_config("ocr", "upsample", type_=bool)
 
+    tesseract_config['tessedit_create_txt'] = 1
+
     draw_source_region(frame, region)
     imglog = ImageLogger("ocr", result=None)
 
-    text = _tesseract(
+    text, _ = _tesseract(
         frame, region, mode, lang, tesseract_config,
         tesseract_user_patterns, tesseract_user_words, upsample, text_color,
         text_color_threshold, engine, char_whitelist, imglog)
+    assert text is not None
     text = text.strip().translate(_ocr_transtab)
     text = apply_ocr_corrections(text, corrections)
 
@@ -358,16 +360,18 @@ def match_text(
 
     _config = dict(tesseract_config or {})
     _config['tessedit_create_hocr'] = 1
+    _config['tessedit_create_txt'] = 0
 
     rts = getattr(frame, "time", None)
 
     draw_source_region(frame, region)
     imglog = ImageLogger("match_text")
 
-    xml = _tesseract(frame, region, mode, lang, _config,
-                     None, text.split(), upsample, text_color,
-                     text_color_threshold, engine, char_whitelist,
-                     imglog)
+    _, xml = _tesseract(
+        frame, region, mode, lang, _config,
+        None, text.split(), upsample, text_color,
+        text_color_threshold, engine, char_whitelist,
+        imglog)
     if xml == '':
         hocr = None
         result = TextMatchResult(rts, False, None, frame, text)
@@ -653,10 +657,14 @@ def _tesseract(frame, region, mode, lang, _config, user_patterns, user_words,
         frame = ocr.text_color_differ(frame, text_color, text_color_threshold,
                                       imglog)
 
-    return _tesseract_subprocess(frame, mode, lang, _config,  # pylint:disable=unexpected-keyword-arg
-                                 user_patterns, user_words, upsample,
-                                 engine, char_whitelist, imglog,
-                                 tesseract_version, use_cache=True)
+    txt, hocr = _tesseract_subprocess(  # pylint:disable=unexpected-keyword-arg
+        frame, mode, lang, _config, user_patterns, user_words, upsample,
+        engine, char_whitelist, imglog, tesseract_version,
+        use_cache=True)
+
+    assert isinstance(txt, (str, type(None)))
+    assert isinstance(hocr, (str, type(None)))
+    return txt, hocr
 
 
 def bgr_diff(frame, color, threshold, imglog: ImageLogger):
@@ -698,7 +706,7 @@ def bgr_diff(frame, color, threshold, imglog: ImageLogger):
 ocr.text_color_differ = bgr_diff
 
 
-@imgproc_cache.memoize({"version": "33"})
+@imgproc_cache.memoize({"version": "34"})
 def _tesseract_subprocess(
         frame, mode, lang, _config, user_patterns, user_words, upsample,
         engine, char_whitelist, imglog: ImageLogger, tesseract_version):
@@ -738,10 +746,6 @@ def _tesseract_subprocess(
             tessenv['TESSDATA_PREFIX'] = tmp + '/'
             if tesseract_version >= [4, 0, 0]:
                 tessenv['TESSDATA_PREFIX'] += "tessdata"
-
-        if ('tessedit_create_hocr' in _config and
-                tesseract_version >= [3, 4]):
-            _config['tessedit_create_txt'] = 0
 
         if user_words:
             if 'user_words_suffix' in _config:
@@ -808,11 +812,17 @@ def _tesseract_subprocess(
                     source_region=imglog.data.get("region"),
                 )
 
-        for filename in glob.glob(tmp + "/output.*"):
-            _, ext = os.path.splitext(filename)
-            if ext in (".txt", ".hocr"):
-                with open(filename, encoding='utf-8') as f:
-                    return f.read()
+        try:
+            with open(tmp + "/output.txt", encoding='utf-8') as f:
+                txt = f.read()
+        except FileNotFoundError:
+            txt = None
+        try:
+            with open(tmp + "/output.hocr", encoding='utf-8') as f:
+                hocr = f.read()
+        except FileNotFoundError:
+            hocr = None
+        return txt, hocr
 
 
 def _upsample(frame, imglog: ImageLogger):
