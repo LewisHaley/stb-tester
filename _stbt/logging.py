@@ -311,21 +311,26 @@ class ImageLogger():
             else:
                 css_class = "nomatch"
 
+        if title:
+            import markupsafe
+            title_html = markupsafe.Markup("<br>").join(title.splitlines())
+        else:
+            title_html = None
+
         return jinja2.Template(dedent("""\
-            <div class="region {{css_class}}"
+            <div class="region {{css_class}}{{ ' has-tooltip' if title_html else '' }}"
                  style="left: {{region.x / image.width * 100}}%;
                         top: {{region.y / image.height * 100}}%;
                         width: {{region.width / image.width * 100}}%;
                         height: {{region.height / image.height * 100}}%"
-                 {% if title %}
-                 title="{{ title | escape }}"
-                 {% endif %}
-                 ></div>
+                 >{% if title_html %}<div class="tooltip">{{ title_html }}</div>{% endif %}</div>
             """)) \
             .render(css_class=css_class,
                     image=source_size,
                     region=region,
-                    title=title)
+                    title=title,
+                    title_html=title_html,
+                    )
 
     def _img(self, name: str, attrs: str = "", desc_suffix: str = "") -> str:
         import markupsafe
@@ -408,7 +413,8 @@ class ImageLogger():
         )
 
 
-_INDEX_HTML_HEADER = dedent("""\
+_INDEX_HTML_HEADER = dedent(
+    """\
     <!DOCTYPE html>
     <html lang='en'>
     <head>
@@ -421,7 +427,28 @@ _INDEX_HTML_HEADER = dedent("""\
         h5 { margin-top: 40px; }
         .annotated_image { position: relative; display: inline-block; }
         .annotated_image img { max-width: 100%; width: auto; height: auto; }
-        .region { position: absolute; }
+        .region { position: absolute; pointer-events: none; }
+        .region.has-tooltip { pointer-events: auto; }
+        .region .tooltip {
+            visibility: hidden;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 4px;
+            padding: 5px;
+            position: absolute;
+            z-index: 1;
+            bottom: calc(100% + 5px);
+            left: 0;
+            right: 0;
+            margin-left: auto;
+            margin-right: auto;
+            opacity: 0;
+            transition: opacity 0.3s;
+            width: max-content;
+            max-width: 300px;
+        }
+        .region:hover .tooltip { visibility: visible; opacity: 1; }
         .source_region { outline: 2px solid #8080ff; }
         .region.matched { outline: 2px solid #ff0020; }
         .region.nomatch { outline: 2px solid #ffff20; }

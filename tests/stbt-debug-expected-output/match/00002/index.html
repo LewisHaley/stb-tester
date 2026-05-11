@@ -10,7 +10,28 @@
     h5 { margin-top: 40px; }
     .annotated_image { position: relative; display: inline-block; }
     .annotated_image img { max-width: 100%; width: auto; height: auto; }
-    .region { position: absolute; }
+    .region { position: absolute; pointer-events: none; }
+    .region.has-tooltip { pointer-events: auto; }
+    .region .tooltip {
+        visibility: hidden;
+        background-color: #333;
+        color: #fff;
+        text-align: center;
+        border-radius: 4px;
+        padding: 5px;
+        position: absolute;
+        z-index: 1;
+        bottom: calc(100% + 5px);
+        left: 0;
+        right: 0;
+        margin-left: auto;
+        margin-right: auto;
+        opacity: 0;
+        transition: opacity 0.3s;
+        width: max-content;
+        max-width: 300px;
+    }
+    .region:hover .tooltip { visibility: visible; opacity: 1; }
     .source_region { outline: 2px solid #8080ff; }
     .region.matched { outline: 2px solid #ff0020; }
     .region.nomatch { outline: 2px solid #ffff20; }
@@ -55,7 +76,6 @@ This image is annotated with the following regions:
             top: 0.0%;
             width: 100.0%;
             height: 100.0%"
-     
      ></div>
   
   <div class="region matched"
@@ -63,7 +83,6 @@ This image is annotated with the following regions:
             top: 0.3731343283582089%;
             width: 31.105990783410135%;
             height: 16.417910447761194%"
-     
      ></div>
   
   <div class="region matched"
@@ -71,7 +90,6 @@ This image is annotated with the following regions:
             top: 27.985074626865668%;
             width: 31.105990783410135%;
             height: 16.417910447761194%"
-     
      ></div>
   
   <div class="region matched"
@@ -79,7 +97,6 @@ This image is annotated with the following regions:
             top: 0.3731343283582089%;
             width: 31.105990783410135%;
             height: 16.417910447761194%"
-     
      ></div>
   
   <div class="region matched"
@@ -87,7 +104,6 @@ This image is annotated with the following regions:
             top: 60.820895522388064%;
             width: 31.105990783410135%;
             height: 16.417910447761194%"
-     
      ></div>
   
   <div class="region matched"
@@ -95,7 +111,6 @@ This image is annotated with the following regions:
             top: 44.40298507462687%;
             width: 31.105990783410135%;
             height: 16.417910447761194%"
-     
      ></div>
   
   <div class="region matched"
@@ -103,7 +118,6 @@ This image is annotated with the following regions:
             top: 0.3731343283582089%;
             width: 31.105990783410135%;
             height: 16.417910447761194%"
-     
      ></div>
   
   <div class="region nomatch"
@@ -111,7 +125,6 @@ This image is annotated with the following regions:
             top: 24.253731343283583%;
             width: 31.105990783410135%;
             height: 16.417910447761194%"
-     
      ></div>
   
 </div>
