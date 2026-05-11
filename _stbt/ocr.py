@@ -6,6 +6,7 @@ import os
 import re
 import shutil
 import subprocess
+import typing
 import unicodedata
 from enum import IntEnum
 from typing import Optional
@@ -148,7 +149,7 @@ def ocr(
     region: Region = Region.ALL,
     mode: OcrMode = OcrMode.PAGE_SEGMENTATION_WITHOUT_OSD,
     lang: Optional[str] = None,
-    tesseract_config: Optional[dict[str, bool | str | int]] = None,
+    tesseract_config: Optional[typing.Mapping[str, bool | str | int]] = None,
     tesseract_user_words: Optional[list[str] | str] = None,
     tesseract_user_patterns: Optional[list[str] | str] = None,
     upsample: Optional[bool] = None,
@@ -287,6 +288,11 @@ def ocr(
     if upsample is None:
         upsample = get_config("ocr", "upsample", type_=bool)
 
+    if tesseract_config is None:
+        tesseract_config = {}
+    else:
+        tesseract_config = dict(tesseract_config)
+
     tesseract_config['tessedit_create_txt'] = 1
 
     draw_source_region(frame, region)
@@ -311,7 +317,7 @@ def match_text(
     region: Region = Region.ALL,
     mode: OcrMode = OcrMode.PAGE_SEGMENTATION_WITHOUT_OSD,
     lang: Optional[str] = None,
-    tesseract_config: Optional[dict[str, bool | str | int]] = None,
+    tesseract_config: Optional[typing.Mapping[str, bool | str | int]] = None,
     case_sensitive: bool = False,
     upsample: Optional[bool] = None,
     text_color: Optional[ColorT] = None,
@@ -607,12 +613,26 @@ def _tesseract_version(output=None):
     return LooseVersion(line.split()[1])
 
 
-def _tesseract(frame, region, mode, lang, _config, user_patterns, user_words,
-               upsample, text_color, text_color_threshold, engine,
-               char_whitelist, imglog: ImageLogger):
+def _tesseract(
+        frame: FrameT,
+        region: Region,
+        mode: OcrMode,
+        lang: Optional[str],
+        _config: Optional[dict[str, bool | str | int]],
+        user_patterns: Optional[list[str]],
+        user_words: Optional[list[str]],
+        upsample: bool,
+        text_color: Optional[ColorT],
+        text_color_threshold: Optional[float],
+        engine: Optional[OcrEngine],
+        char_whitelist: Optional[str],
+        imglog: ImageLogger,
+):
 
     if _config is None:
         _config = {}
+    else:
+        _config = dict(_config)
 
     if lang is None:
         lang = get_config("ocr", "lang", "eng")
@@ -708,8 +728,18 @@ ocr.text_color_differ = bgr_diff
 
 @imgproc_cache.memoize({"version": "34"})
 def _tesseract_subprocess(
-        frame, mode, lang, _config, user_patterns, user_words, upsample,
-        engine, char_whitelist, imglog: ImageLogger, tesseract_version):
+        frame: FrameT,
+        mode: int,
+        lang: str,
+        _config: dict,
+        user_patterns: list[str] | None,
+        user_words: list[str] | None,
+        upsample: int,
+        engine: int,
+        char_whitelist: str | None,
+        imglog: ImageLogger,
+        tesseract_version: list[int],
+) -> tuple[Optional[str], Optional[str]]:
 
     if tesseract_version >= [4, 0]:
         engine_flags = ["--oem", str(int(engine))]
