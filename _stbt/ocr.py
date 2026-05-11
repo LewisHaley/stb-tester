@@ -670,17 +670,40 @@ def _tesseract(
 
     frame = crop(frame, region)
 
+    upsample_arg = upsample
     if text_color is not None:
         if upsample:
             frame = _upsample(frame, imglog)
-            upsample = False
+            upsample_arg = False
         frame = ocr.text_color_differ(frame, text_color, text_color_threshold,
                                       imglog)
 
     txt, hocr = _tesseract_subprocess(  # pylint:disable=unexpected-keyword-arg
-        frame, mode, lang, _config, user_patterns, user_words, upsample,
+        frame, mode, lang, _config, user_patterns, user_words, upsample_arg,
         engine, char_whitelist, imglog, tesseract_version,
         use_cache=True)
+
+    if imglog.enabled:
+        if upsample:
+            scale = 3
+        else:
+            scale = 1
+        off_x = max(0, region.x)
+        off_y = max(0, region.y)
+        imglog.set(
+            source_tsv_regions=[
+                (
+                    Region.from_extents(
+                        off_x + r.x // scale,
+                        off_y + r.y // scale,
+                        off_x + (r.right + scale - 1) // scale,
+                        off_y + (r.bottom + scale - 1) // scale),
+                    css_class,
+                    title
+                )
+                for r, css_class, title in imglog.data["tsv_regions"]
+            ]
+        )
 
     assert isinstance(txt, (str, type(None)))
     assert isinstance(hocr, (str, type(None)))
@@ -809,6 +832,7 @@ def _tesseract_subprocess(
 
         if imglog.enabled:
             _config['tessedit_write_images'] = True
+            _config['tessedit_create_tsv'] = 1
 
         if _config:
             os.makedirs(tessdata_dir + '/configs', exist_ok=True)
@@ -829,7 +853,43 @@ def _tesseract_subprocess(
             warn("Tesseract failed: %s" % e.output.decode("utf-8", "replace"))
             raise
 
+        try:
+            with open(tmp + "/output.txt", encoding='utf-8') as f:
+                txt = f.read()
+        except FileNotFoundError:
+            txt = None
+        try:
+            with open(tmp + "/output.hocr", encoding='utf-8') as f:
+                hocr = f.read()
+        except FileNotFoundError:
+            hocr = None
+
         if imglog.enabled:
+            tsv_regions: list[tuple[Region, str, str | None]] = []
+            try:
+                with open(tmp + "/output.tsv", encoding='utf-8') as f:
+                    import csv
+                    tsv = list(csv.DictReader(f, delimiter='\t'))
+            except FileNotFoundError:
+                pass
+            else:
+                for row in tsv:
+                    level = int(row['level'])
+                    css_class = "tsv-" + _TSV_LEVEL_TO_TYPE[level]
+                    region = Region(
+                        int(row['left']), int(row['top']),
+                        int(row['width']), int(row['height'])
+                    )
+                    if level > 1:
+                        title = _TSV_LEVEL_TO_TYPE[level].capitalize()
+                        if row['text']:
+                            title += " \"%s\"\n(confidence: %s%%)" % (
+                                row['text'], row['conf'])
+
+                        tsv_regions.append((region, css_class, title))
+
+            imglog.set(tsv_regions=tsv_regions)
+
             tessinput = os.path.join(tmp, "tessinput.tif")
             if os.path.exists(tessinput):
                 imglog.imwrite(
@@ -842,17 +902,10 @@ def _tesseract_subprocess(
                     source_region=imglog.data.get("region"),
                 )
 
-        try:
-            with open(tmp + "/output.txt", encoding='utf-8') as f:
-                txt = f.read()
-        except FileNotFoundError:
-            txt = None
-        try:
-            with open(tmp + "/output.hocr", encoding='utf-8') as f:
-                hocr = f.read()
-        except FileNotFoundError:
-            hocr = None
         return txt, hocr
+
+
+_TSV_LEVEL_TO_TYPE = [None, 'page', 'block', 'paragraph', 'line', 'word']
 
 
 def _upsample(frame, imglog: ImageLogger):
@@ -964,9 +1017,15 @@ def _log_ocr_image_debug(imglog: ImageLogger, output=None):
             output = "".join(x for x, _ in _hocr_iterate(hocr))
 
     template = """\
+        <style>
+            .tsv-block { outline: 4px solid orange; }
+            .tsv-paragraph { outline: 3px solid yellow; }
+            .tsv-line { outline: 2px solid green; }
+            .tsv-word { outline: 1px solid blue; }
+        </style>
         <h4>{{title}}</h4>
 
-        {{ annotated_image(result) }}
+        {{ annotated_image([result] + source_tsv_regions) }}
 
         {% if match_text %}
         <h5>Result:</h5>
@@ -1017,7 +1076,7 @@ def _log_ocr_image_debug(imglog: ImageLogger, output=None):
 
         {% if "tessinput" in images %}
         <h5>Tesseract's binarisation:</h5>
-        {{ img("tessinput") }}
+        {{ annotated_image(tsv_regions, source_name="tessinput") }}
         {% endif %}
     """
 

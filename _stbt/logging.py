@@ -357,7 +357,7 @@ class ImageLogger():
         source_size = Region(0, 0, s[1], s[0])
 
         _regions: list[tuple[Region, str | bool | None, str | None]] = []
-        if "region" in self.data:
+        if "region" in self.data and source_name == "source":
             _regions.append((Region.intersect(self.data["region"], source_size),
                              "source_region", None))
 
