@@ -1084,6 +1084,7 @@ def _log_ocr_image_debug(imglog: ImageLogger, output=None):
             .tsv-paragraph { outline: 3px solid yellow; }
             .tsv-line { outline: 2px solid green; }
             .tsv-word { outline: 1px solid blue; }
+            img.img-tessinput { outline: 2px solid #8080ff; }
         </style>
         <h4>{{title}}</h4>
 

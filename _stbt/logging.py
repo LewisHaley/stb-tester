@@ -352,8 +352,9 @@ class ImageLogger():
         if desc_suffix:
             title += "\n\n" + desc_suffix
         return markupsafe.Markup(
-            '<img src="%s.png" title="%s" height="%d" width="%d" %s>') % (
-            name, title, meta.height, meta.width, attrs)
+            '<img class="img-%s" src="%s.png" title="%s" height="%d" '
+            'width="%d" %s>') % (
+            name, name, title, meta.height, meta.width, attrs)
 
     def _draw_annotated_image(self, regions=None, source_name="source"):
         import jinja2

@@ -57,7 +57,7 @@
 <h4>is_screen_black: False</h4>
 
 <div class="annotated_image">
-  <img src="source.png" title="Original uncropped source image originally captured from the device under test
+  <img class="img-source" src="source.png" title="Original uncropped source image originally captured from the device under test
 
 This image is annotated with the following regions:
 
@@ -83,7 +83,7 @@ This image is annotated with the following regions:
 
 
 <h5>Grayscale, masked:</h5>
-<img src="gray.png" title="Grayscale version of the relevant portion of the source image after cropping to the region of interest (Region(x=0, y=0, right=160, bottom=120)).  The values here are in the range 0 (black) to 255 (white) and will be compared against the threshold (20) to determine whether the screen is black. The maximum pixel intensity in this image is 255.
+<img class="img-gray" src="gray.png" title="Grayscale version of the relevant portion of the source image after cropping to the region of interest (Region(x=0, y=0, right=160, bottom=120)).  The values here are in the range 0 (black) to 255 (white) and will be compared against the threshold (20) to determine whether the screen is black. The maximum pixel intensity in this image is 255.
 
 This image was derived from the source image by cropping to the region Region(x=0, y=0, right=160, bottom=120)." height="120" width="160" >
 <ul>
@@ -93,7 +93,7 @@ This image was derived from the source image by cropping to the region Region(x=
 
 
 <h5>Non-black pixels in region:</h5>
-<img src="non_black.png" title="Binary image showing the pixels that were considered non-black after applying the threshold. The white pixels in this image indicate the pixels that were considered non-black and the black pixels indicate the pixels that were considered black.  This corresponds to the region {region} of the source image.
+<img class="img-non_black" src="non_black.png" title="Binary image showing the pixels that were considered non-black after applying the threshold. The white pixels in this image indicate the pixels that were considered non-black and the black pixels indicate the pixels that were considered black.  This corresponds to the region {region} of the source image.
 
 This image was derived from the source image by cropping to the region Region(x=0, y=0, right=160, bottom=120)." height="120" width="160" >
     <h2>Call stack</h2>
