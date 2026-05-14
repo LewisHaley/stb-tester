@@ -417,7 +417,7 @@ def _match_all(image, frame: Optional[FrameT], match_parameters, region):
         "match", match_parameters=match_parameters,
         template_name=t.filename or "<Image>",
         region=input_region)
-    imglog.imwrite("source", frame)
+    imglog.imwrite("frame", frame)
 
     try:
         for (matched, match_region, first_pass_matched,
@@ -1084,15 +1084,15 @@ def _log_match_image_debug(imglog: ImageLogger):
             source_region="region")
 
     for i, result in enumerate(imglog.data["matches"]):
-        source = imglog.images["source"]
+        frame = imglog.images["frame"]
         imglog.imwrite(
-            "match%d-source_with_match" % i, source,
+            "match%d-source_with_match" % i, frame,
             result.region, _Annotation.MATCHED if result._first_pass_matched
             else _Annotation.NO_MATCH,
             description=(
                 f"Full source frame with match candidate {i} annotated."
             ),
-            source_region=Region(0, 0, source.shape[1], source.shape[0]))
+            source_region=Region(0, 0, frame.shape[1], frame.shape[0]))
 
     template = """\
         {% macro thumb(name) -%}
@@ -1108,7 +1108,7 @@ def _log_match_image_debug(imglog: ImageLogger):
             {% if "mask" in images %}
             with <b>transparency mask</b> {{thumb("mask")}}
             {% endif %}
-            within <b>source</b> image {{thumb("source")}}</p>
+            within <b>source</b> frame {{thumb("frame")}}</p>
 
         {% if fast_path %}
         <p>Taking fast path - template shape <code>{{ template_shape }}</code>
@@ -1203,11 +1203,11 @@ def _log_match_image_debug(imglog: ImageLogger):
             <tr>
               <th>Match #</th>
               <th>Comparing <b>template</b></th>
-              <th>against <b>source image's region of interest</b></th>
+              <th>against <b>source frame's region of interest</b></th>
               {% if match_parameters.confirm_method ==
                          ConfirmMethod.NORMED_ABSDIFF %}
                 <th><b>Normalised template</b></th>
-                <th><b>Normalised source</b></th>
+                <th><b>Normalised frame</b></th>
               {% endif %}
               <th><b>Absolute differences</b></th>
               <th>

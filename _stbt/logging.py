@@ -222,10 +222,10 @@ class ImageLogger():
         if isinstance(source_region, str):
             source_region = self.data[source_region]
             assert isinstance(source_region, (Region, type(None)))
-        if name == "source":
+        if name == "frame":
             if not description:
                 description = (
-                    "Original uncropped source image originally captured from "
+                    "Original uncropped source frame originally captured from "
                     "the device under test")
             if not source_region:
                 source_region = Region(0, 0, image.shape[1], image.shape[0])
@@ -339,15 +339,15 @@ class ImageLogger():
             return ""
         meta = self.image_meta[name]
         title = meta.description
-        if meta.source_region and name != "source":
-            src = self.image_meta["source"]
+        if meta.source_region and name != "frame":
+            src = self.image_meta["frame"]
             if meta.source_region == Region(0, 0, src.width, src.height):
                 title += (
-                    "\n\nThis image was derived from the source image without "
+                    "\n\nThis image was derived from the source frame without "
                     "cropping.")
             else:
                 title += (
-                    "\n\nThis image was derived from the source image by "
+                    "\n\nThis image was derived from the source frame by "
                     "cropping to the region %s." % (meta.source_region,))
         if desc_suffix:
             title += "\n\n" + desc_suffix
@@ -356,14 +356,14 @@ class ImageLogger():
             'width="%d" %s>') % (
             name, name, title, meta.height, meta.width, attrs)
 
-    def _draw_annotated_image(self, regions=None, source_name="source"):
+    def _draw_annotated_image(self, regions=None, source_name="frame"):
         import jinja2
 
         s = self.images[source_name].shape
         source_size = Region(0, 0, s[1], s[0])
 
         _regions: list[tuple[Region, str | bool | None, str | None]] = []
-        if "region" in self.data and source_name == "source":
+        if "region" in self.data and source_name == "frame":
             _regions.append((Region.intersect(self.data["region"], source_size),
                              "source_region", None))
 

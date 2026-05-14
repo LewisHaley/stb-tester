@@ -192,7 +192,7 @@ class BGRDiff(Differ):
 
         imglog = ImageLogger("BGRDiff", region=region,
                              min_size=self.min_size, threshold=self.threshold)
-        imglog.imwrite("source", frame)
+        imglog.imwrite("frame", frame)
         imglog.imwrite(
             "previous_frame", prev_frame,
             description=(
@@ -414,7 +414,7 @@ class GrayscaleDiff(Differ):
                              min_size=self.min_size,
                              threshold=self.threshold)
         imglog.imwrite(
-            "source", frame,
+            "frame", frame,
             source_region=Region(0, 0, frame.shape[1], frame.shape[0]))
         imglog.imwrite(
             "gray", frame_gray,

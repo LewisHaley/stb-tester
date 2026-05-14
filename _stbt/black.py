@@ -80,7 +80,7 @@ def is_screen_black(frame: Optional[Frame] = None,
 
     draw_source_region(frame, region)
     imglog = ImageLogger("is_screen_black", region=region, threshold=threshold)
-    imglog.imwrite("source", frame)
+    imglog.imwrite("frame", frame)
 
     grayframe = cv2.cvtColor(crop(frame, region), cv2.COLOR_BGR2GRAY)
     if mask_ is not None:
@@ -112,7 +112,7 @@ def is_screen_black(frame: Optional[Frame] = None,
         imglog.imwrite(
             "gray", grayframe, description=(
                 "Grayscale version of the relevant portion of the "
-                "source image after cropping to the region of interest "
+                "source frame after cropping to the region of interest "
                 f"({region}){mask_desc}.  The values "
                 "here are in the range 0 (black) to 255 (white) and will "
                 "be compared against the threshold "
@@ -136,7 +136,7 @@ def is_screen_black(frame: Optional[Frame] = None,
                 "this image indicate the pixels that were considered non-black "
                 "and the black pixels indicate the pixels that were considered "
                 "black.  This corresponds to the region {region} of the source "
-                "image."
+                "frame."
             ),
             source_region=region,
         )

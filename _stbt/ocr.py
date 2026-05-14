@@ -666,7 +666,7 @@ def _tesseract(
         raise ValueError("%s isn't available in tesseract %s"
                          % (mode, tesseract_version))
 
-    imglog.imwrite("source", frame)
+    imglog.imwrite("frame", frame)
     imglog.set(region=region, engine=engine, mode=mode, lang=lang,
                tesseract_config=_config.copy(),
                user_patterns=user_patterns, user_words=user_words,
