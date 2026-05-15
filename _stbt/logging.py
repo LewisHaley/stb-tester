@@ -10,10 +10,12 @@ from contextlib import contextmanager
 from textwrap import dedent
 
 from .config import get_config
-from .types import Region
+from .types import Region, RegionT, Size
 from .utils import mkdir_p
 
 if typing.TYPE_CHECKING:
+    import numpy
+    import numpy.typing
     import traceback
     from .core import SinkPipeline
     from .imgutils import FrameT
@@ -197,7 +199,7 @@ class ImageLogger():
     def imwrite(
             self,
             name: str,
-            image: "FrameT | None",
+            image: "numpy.typing.NDArray | None",
             regions: "list[Region] | Region | None" = None,
             colours: "list[tuple[int, int, int]] | tuple[int, int, int] | None" = None,  # pylint: disable=line-too-long
             scale: float = 1,
@@ -217,6 +219,7 @@ class ImageLogger():
             # Scale `cv2.matchTemplate` heatmap output in range
             # [0.0, 1.0] to visible grayscale range [0, 255].
             image = cv2.convertScaleAbs(image, alpha=255.0 / scale)
+            assert isinstance(image, numpy.ndarray)
         else:
             image = image.copy()
         if isinstance(source_region, str):
@@ -299,7 +302,7 @@ class ImageLogger():
             display(IFrame(src=index_html, width=974, height=600))
 
     @staticmethod
-    def _draw(region, source_size, css_class, title=None):
+    def _draw(region: RegionT, source_size: Size, css_class, title=None):
         import jinja2
 
         if region is None:
@@ -362,7 +365,7 @@ class ImageLogger():
         s = self.images[source_name].shape
         source_size = Region(0, 0, s[1], s[0])
 
-        _regions: list[tuple[Region, str | bool | None, str | None]] = []
+        _regions: list[tuple[RegionT, str | bool | None, str | None]] = []
         if "region" in self.data and source_name == "frame":
             _regions.append((Region.intersect(self.data["region"], source_size),
                              "source_region", None))

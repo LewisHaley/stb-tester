@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import enum
 import itertools
+import typing
 from collections import namedtuple
 from typing import Iterator, Optional
 
@@ -27,6 +28,10 @@ from .logging import (_Annotation, ddebug, debug, draw_on, draw_source_region,
 from .sqdiff import sqdiff
 from .types import Position, Region, UITestFailure
 from .utils import to_unicode
+
+if typing.TYPE_CHECKING:
+    import numpy.typing
+    NDArrayT = typing.TypeVar("NDArrayT", bound=numpy.typing.NDArray)
 
 
 class MatchMethod(enum.Enum):
@@ -680,9 +685,9 @@ def _find_candidate_matches(
 
     region = Region(*_upsample(best_match_position, level),
                     width=template.shape[1], height=template.shape[0])
+    assert heatmap_scale is not None
 
     for i in itertools.count():
-
         imglog.imwrite(
             "match%d-heatmap" % i, heatmap, scale=heatmap_scale,
             description=(
@@ -716,8 +721,14 @@ def _find_candidate_matches(
 
 
 def _match_template(
-        image, template, mask, method, roi_mask, level, imglog: ImageLogger):
-
+        image: numpy.typing.NDArray,
+        template: numpy.typing.NDArray,
+        mask: Optional[numpy.typing.NDArray],
+        method,
+        roi_mask,
+        level,
+        imglog: ImageLogger,
+):
     ddebug("Level %d: image %s, template %s" % (
         level, image.shape, template.shape))
 
@@ -856,7 +867,16 @@ def _find_best_match_position(matches_heatmap, scale, threshold, level):
     return (matched, best_match_position, certainty)
 
 
-def _build_pyramid(image, levels, is_template=False, is_mask=False):
+if typing.TYPE_CHECKING:
+    PyrImage = typing.TypeVar("PyrImage", bound="numpy.typing.NDArray | None")
+
+
+def _build_pyramid(
+        image: PyrImage,
+        levels: int,
+        is_template=False,
+        is_mask=False,
+) -> list[PyrImage]:
     """A "pyramid" is [an image, the same image at 1/2 the size, at 1/4, ...]
 
     As a performance optimisation, image processing algorithms work on a
@@ -869,7 +889,7 @@ def _build_pyramid(image, levels, is_template=False, is_mask=False):
     array.
     """
     if image is None:
-        return [None] * levels
+        return [image] * levels
     pyramid = [image]
     previous = image
     for _ in range(levels - 1):
