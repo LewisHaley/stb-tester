@@ -1,9 +1,7 @@
 import os
 import re
-import shutil
 import socket
 import struct
-import subprocess
 import sys
 import time
 
@@ -12,7 +10,7 @@ import requests
 from . import irnetbox
 from .config import ConfigurationError
 from .logging import debug
-from .utils import named_temporary_directory, to_bytes, to_unicode
+from .utils import to_bytes, to_unicode
 
 __all__ = ['uri_to_control']
 
@@ -63,7 +61,6 @@ def _lookup_uri_to_control(uri, display=None):
         (r'samsung:(?P<hostname>[^:/]+)(:(?P<port>\d+))?',
          _new_samsung_tcp_control),
         (r'test', lambda: VideoTestSrcControl(display)),
-        (r'x11:(?P<display>[^,]+)?(,(?P<mapping>.+)?)?', X11Control),
         (r'rfb:(?P<hostname>[^:/]+)(:(?P<port>\d+))?', RemoteFrameBuffer),
         (r'redrat-bt:(?P<hostname>[^:/]+):((?P<port>\d+))?:'
          r'(?P<serial_no>[^:/]+):(?P<target_bt_address>[^:/]+)',
@@ -626,26 +623,6 @@ def _load_key_mapping(filename):
     return out
 
 
-class X11Control(RemoteControl):
-    """Simulate key presses using xdotool.
-    """
-    def __init__(self, display=None, mapping=None):
-        self.display = display
-        if shutil.which('xdotool') is None:
-            raise FileNotFoundError("x11 control: xdotool not installed")
-        self.mapping = _load_key_mapping(_find_file("x-key-mapping.conf"))
-        if mapping is not None:
-            self.mapping.update(_load_key_mapping(mapping))
-
-    def press(self, key):
-        e = os.environ.copy()
-        if self.display is not None:
-            e['DISPLAY'] = self.display
-        subprocess.check_call(
-            ['xdotool', 'key', self.mapping.get(key, key)], env=e)
-        debug("Pressed %s" % key)
-
-
 def read_records(stream, sep):
     r"""Generator that splits stream into records given a separator
 
@@ -778,36 +755,3 @@ def test_samsung_tcp_control():
     assert len(sent_data) == 2
     assert sent_data[1] == (
         b'\x00\x13\x00iphone.iapp.samsung\r\x00\x00\x00\x00\x08\x00S0VZXzA=')
-
-
-def test_x11_control():
-    from unittest import SkipTest
-    if os.environ.get('enable_virtual_stb') != 'yes':
-        raise SkipTest('Set $enable_virtual_stb=yes to run this test')
-    if not shutil.which('Xorg') or not shutil.which('xterm'):
-        raise SkipTest("Testing X11Control requires X11 and xterm")
-
-    from .x11 import x_server
-
-    with named_temporary_directory() as tmp, x_server(320, 240) as display:
-        r = uri_to_control('x11:%s' % display)
-
-        subprocess.Popen(
-            ['xterm', '-l', '-lf', 'xterm.log'],
-            env={'DISPLAY': display, 'PATH': os.environ['PATH']},
-            cwd=tmp, stderr=subprocess.DEVNULL)
-
-        # Can't be sure how long xterm will take to get ready:
-        for _ in range(0, 20):
-            for keysym in ['KEY_T', 'KEY_O', 'KEY_U', 'KEY_C', 'KEY_H',
-                           'KEY_SPACE',
-                           'g', 'o', 'o', 'd',
-                           'KEY_OK']:
-                r.press(keysym)
-            if os.path.exists(tmp + '/good'):
-                break
-            time.sleep(0.5)
-        with open(tmp + '/xterm.log', 'r', encoding='utf-8') as log:
-            for line in log:
-                print("xterm.log: " + line, end=' ')
-        assert os.path.exists(tmp + '/good')

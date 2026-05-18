@@ -14,7 +14,6 @@ jobs:
       LANG: C.UTF-8
       SHELL: /bin/bash
       TERM: xterm
-      enable_virtual_stb: no
     steps:
     - uses: actions/checkout@v3
     - run: python3 setup.py sdist

@@ -21,9 +21,6 @@ ifeq ($(enable_docs), no)
  $(info Not building/installing documentation because 'rst2man' was not found)
 endif
 
-# Enable building/installing stbt virtual-stb
-enable_virtual_stb?=no
-
 INSTALL?=install
 TAR ?= $(shell which gnutar >/dev/null 2>&1 && echo gnutar || echo tar)
 MKTAR = $(TAR) --format=gnu --owner=root --group=root \
@@ -92,9 +89,6 @@ INSTALL_PYLIB_FILES = \
     _stbt/types.py \
     _stbt/utils.py \
     _stbt/wait.py \
-    _stbt/x-key-mapping.conf \
-    _stbt/x11.py \
-    _stbt/xorg.conf.in \
     _stbt/xxhash.py \
     stbt_core/__init__.py \
     stbt_core/pylint_plugin.py
@@ -110,9 +104,6 @@ INSTALL_CORE_SCRIPTS = \
     stbt-tv
 
 all: $(INSTALL_CORE_SCRIPTS) $(INSTALL_PYLIB_FILES) etc/stbt.conf
-
-INSTALL_VSTB_FILES = \
-    stbt_virtual_stb.py
 
 install: install-core
 install-core: all
@@ -140,14 +131,6 @@ install-core: all
 	printf "sysconfdir = '%s'\n" \
 	    "$(sysconfdir)" > $(DESTDIR)$(pythondir)/_stbt/vars.py
 	chmod 0644 $(DESTDIR)$(pythondir)/_stbt/vars.py
-
-install-virtual-stb: $(INSTALL_VSTB_FILES)
-	$(INSTALL) -m 0755 -d \
-	    $(patsubst %,$(DESTDIR)$(libexecdir)/stbt/%,$(sort $(dir $(INSTALL_VSTB_FILES))))
-	for filename in $(INSTALL_VSTB_FILES); do \
-	    [ -x "$$filename" ] && mode=0755 || mode=0644; \
-	    $(INSTALL) -m $$mode $$filename $(DESTDIR)$(libexecdir)/stbt/$$filename; \
-	done
 
 INSTALL_GPL_FILES = \
     _stbt/control_gpl.py
@@ -213,7 +196,7 @@ check-pytest: all
 	PYTHONPATH=$$PWD:/usr/lib/python$(python_version)/dist-packages/cec \
 	$(PYTEST) -vv -rs --doctest-modules $(PYTEST_OPTS) \
 	    $$(printf "%s\n" $(PYTHON_FILES) |\
-	       grep -v -e __init__.py -e tests/vstb-example-html5/ -e ^extra/)
+	       grep -v -e __init__.py -e ^extra/)
 check-pythonpackage:
 	$(PYTEST) -vv -rs $(PYTEST_OPTS) \
 	    tests/subdirectory/test_load_image_from_subdirectory.py \
@@ -230,25 +213,12 @@ check-pythonpackage:
 check-integrationtests: install-for-test
 	export PATH="$$PWD/tests/test-install/bin:$$PATH" \
 	       PYTHONPATH="$$PWD/tests/test-install/lib/python$(python_version)/site-packages:$$PYTHONPATH" && \
-	grep -hEo '^test_[a-zA-Z0-9_]+' \
-	    $$(ls tests/test-*.sh | \
-	       grep -v -e tests/test-virtual-stb.sh) |\
+	grep -hEo '^test_[a-zA-Z0-9_]+' tests/test-*.sh | \
 	$(parallel) tests/run-tests.sh -i
 check-pylint: all
 	PYTHONPATH=$$PWD PYLINT="$(PYLINT)" extra/pylint.sh $(PYTHON_FILES)
 check-pyright: all
 	PYTHONPATH=$$PWD pyright
-
-ifeq ($(enable_virtual_stb), yes)
-install: install-virtual-stb
-check: check-virtual-stb
-check-virtual-stb: install-for-test
-	export PATH="$$PWD/tests/test-install/bin:$$PATH" \
-	       PYTHONPATH="$$PWD/tests/test-install/lib/python$(python_version)/site-packages:$$PYTHONPATH" && \
-	tests/run-tests.sh -i tests/test-virtual-stb.sh
-else
-$(info virtual-stb support disabled)
-endif
 
 install-for-test:
 	rm -rf tests/test-install && \
@@ -387,27 +357,8 @@ stb-tester_$(VERSION)-%_$(debian_architecture).deb: \
 	mv "$$tmpdir"/*.deb . && \
 	rm -rf "$$tmpdir"
 
-### Fedora Packaging #########################################################
-
-rpm_topdir?=$(HOME)/rpmbuild
-src_rpm=stb-tester-$(ESCAPED_VERSION)-$(RELEASE)$(shell rpm -E %dist 2>/dev/null).src.rpm
-
-srpm: $(src_rpm)
-
-$(src_rpm): stb-tester-$(VERSION).tar.gz extra/fedora/stb-tester.spec
-	@printf "\n*** Building Fedora src rpm ***\n"
-	mkdir -p $(rpm_topdir)/SOURCES
-	cp stb-tester-$(VERSION).tar.gz $(rpm_topdir)/SOURCES
-	rpmbuild --define "_topdir $(rpm_topdir)" -bs extra/fedora/stb-tester.spec
-	mv $(rpm_topdir)/SRPMS/$(src_rpm) .
-
-rpm: $(src_rpm)
-	sudo dnf builddep -y $<
-	rpmbuild --define "_topdir $(rpm_topdir)" --rebuild $<
-	mv $(rpm_topdir)/RPMS/*/stb-tester-* .
-
 .PHONY: all clean deb dist doc install install-core uninstall
 .PHONY: check check-integrationtests
 .PHONY: check-pytest check-pylint install-for-test
-.PHONY: ppa-publish pypi-publish rpm srpm
+.PHONY: ppa-publish pypi-publish
 .PHONY: FORCE TAGS
