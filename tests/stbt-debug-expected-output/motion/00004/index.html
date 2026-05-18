@@ -9,8 +9,29 @@
     a.nav.pull-right { margin-right: 0; }
     h5 { margin-top: 40px; }
     .annotated_image { position: relative; display: inline-block; }
-    .annotated_image img { max-width: 100%; }
-    .region { position: absolute; }
+    .annotated_image img { max-width: 100%; width: auto; height: auto; }
+    .region { position: absolute; pointer-events: none; }
+    .region.has-tooltip { pointer-events: auto; }
+    .region .tooltip {
+        visibility: hidden;
+        background-color: #333;
+        color: #fff;
+        text-align: center;
+        border-radius: 4px;
+        padding: 5px;
+        position: absolute;
+        z-index: 1;
+        bottom: calc(100% + 5px);
+        left: 0;
+        right: 0;
+        margin-left: auto;
+        margin-right: auto;
+        opacity: 0;
+        transition: opacity 0.3s;
+        width: max-content;
+        max-width: 300px;
+    }
+    .region:hover .tooltip { visibility: visible; opacity: 1; }
     .source_region { outline: 2px solid #8080ff; }
     .region.matched { outline: 2px solid #ff0020; }
     .region.nomatch { outline: 2px solid #ffff20; }
@@ -19,6 +40,7 @@
     .table th { font-weight: normal; background-color: #eee; }
     img.thumb {
         vertical-align: middle; max-width: 150px; max-height: 36px;
+        width: auto; height: auto;
         padding: 1px; border: 1px solid #ccc; }
     .table td { vertical-align: middle; }
 </style>
@@ -38,14 +60,18 @@
 </h4>
 
 <div class="annotated_image">
-  <img src="source.png">
+  <img class="img-frame" src="frame.png" title="Original uncropped source frame originally captured from the device under test
+
+This image is annotated with the following regions:
+
+* Region: Region(x=0, y=0, right=640, bottom=400) class: source_region
+* Region: None class: nomatch" height="400" width="640" >
   
   <div class="region source_region"
      style="left: 0.0%;
             top: 0.0%;
             width: 100.0%;
             height: 100.0%"
-     
      ></div>
   
   
@@ -58,23 +84,33 @@
 
 
 <h5>Previous frame:</h5>
-<img src="previous_frame.png" />
+<img class="img-previous_frame" src="previous_frame.png" title="Previous video frame, compared against the current frame to detect differences." height="400" width="640" >
 
 <h5>Differences:</h5>
-<img src="sqd.png" />
+<img class="img-sqd" src="sqd.png" title="Pixel-by-pixel BGR colour distance between the current and previous frame (normalised to 0-255). Brighter pixels indicate larger colour differences. Masked.
+
+This image was derived from the source frame without cropping." height="400" width="640" >
 
 
 <h5>Mask:</h5>
-<img src="mask.png" />
+<img class="img-mask" src="mask.png" title="Mask applied to the image. White pixels indicate the parts of the frame that were analysed for motion, and black pixels indicate the parts that were ignored.
+
+This image was derived from the source frame without cropping." height="400" width="640" >
 
 
 <h5>Differences above threshold (25):</h5>
-<img src="thresholded.png" />
+<img class="img-thresholded" src="thresholded.png" title="Binary image showing pixels where the BGR colour distance between the current and previous frame exceeded the threshold (25). White pixels indicate detected differences.
+
+This image was derived from the source frame without cropping." height="400" width="640" >
 
 
 <h5>Eroded:</h5>
-<img src="eroded.png" />
+<img class="img-eroded" src="eroded.png" title="Thresholded difference image after morphological opening (erosion followed by dilation) to remove single-pixel noise. Remaining white pixels indicate differences.
 
-</div>
-</body>
-</html>
+This image was derived from the source frame without cropping." height="400" width="640" >
+    <h2>Call stack</h2>
+    <pre>Traceback (most recent call last):
+</pre>
+    </div>
+    </body>
+    </html>

@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import collections
 import errno
-import glob
 import os
 import re
 import shutil
 import subprocess
+import typing
 import unicodedata
 from enum import IntEnum
 from typing import Optional
@@ -16,7 +16,14 @@ import numpy
 
 from . import imgproc_cache
 from .config import get_config
-from .imgutils import Color, ColorT, crop, FrameT, _frame_repr, _validate_region
+from .imgutils import (
+    Color,
+    ColorT,
+    crop,
+    FrameT,
+    _frame_repr,
+    _validate_region,
+)
 from .logging import debug, draw_source_region, ImageLogger, warn
 from .types import Region
 from .utils import LooseVersion, named_temporary_directory, to_unicode
@@ -149,7 +156,7 @@ def ocr(
     region: Region = Region.ALL,
     mode: OcrMode = OcrMode.PAGE_SEGMENTATION_WITHOUT_OSD,
     lang: Optional[str] = None,
-    tesseract_config: Optional[dict[str, bool | str | int]] = None,
+    tesseract_config: Optional[typing.Mapping[str, bool | str | int]] = None,
     tesseract_user_words: Optional[list[str] | str] = None,
     tesseract_user_patterns: Optional[list[str] | str] = None,
     upsample: Optional[bool] = None,
@@ -288,13 +295,21 @@ def ocr(
     if upsample is None:
         upsample = get_config("ocr", "upsample", type_=bool)
 
+    if tesseract_config is None:
+        tesseract_config = {}
+    else:
+        tesseract_config = dict(tesseract_config)
+
+    tesseract_config['tessedit_create_txt'] = 1
+
     draw_source_region(frame, region)
     imglog = ImageLogger("ocr", result=None)
 
-    text = _tesseract(
+    text, _ = _tesseract(
         frame, region, mode, lang, tesseract_config,
         tesseract_user_patterns, tesseract_user_words, upsample, text_color,
         text_color_threshold, engine, char_whitelist, imglog)
+    assert text is not None
     text = text.strip().translate(_ocr_transtab)
     text = apply_ocr_corrections(text, corrections)
 
@@ -309,7 +324,7 @@ def match_text(
     region: Region = Region.ALL,
     mode: OcrMode = OcrMode.PAGE_SEGMENTATION_WITHOUT_OSD,
     lang: Optional[str] = None,
-    tesseract_config: Optional[dict[str, bool | str | int]] = None,
+    tesseract_config: Optional[typing.Mapping[str, bool | str | int]] = None,
     case_sensitive: bool = False,
     upsample: Optional[bool] = None,
     text_color: Optional[ColorT] = None,
@@ -358,16 +373,18 @@ def match_text(
 
     _config = dict(tesseract_config or {})
     _config['tessedit_create_hocr'] = 1
+    _config['tessedit_create_txt'] = 0
 
     rts = getattr(frame, "time", None)
 
     draw_source_region(frame, region)
     imglog = ImageLogger("match_text")
 
-    xml = _tesseract(frame, region, mode, lang, _config,
-                     None, text.split(), upsample, text_color,
-                     text_color_threshold, engine, char_whitelist,
-                     imglog)
+    _, xml = _tesseract(
+        frame, region, mode, lang, _config,
+        None, text.split(), upsample, text_color,
+        text_color_threshold, engine, char_whitelist,
+        imglog)
     if xml == '':
         hocr = None
         result = TextMatchResult(rts, False, None, frame, text)
@@ -603,12 +620,26 @@ def _tesseract_version(output=None):
     return LooseVersion(line.split()[1])
 
 
-def _tesseract(frame, region, mode, lang, _config, user_patterns, user_words,
-               upsample, text_color, text_color_threshold, engine,
-               char_whitelist, imglog):
+def _tesseract(
+        frame: FrameT,
+        region: Region,
+        mode: OcrMode,
+        lang: Optional[str],
+        _config: Optional[dict[str, bool | str | int]],
+        user_patterns: Optional[list[str]],
+        user_words: Optional[list[str]],
+        upsample: bool,
+        text_color: Optional[ColorT],
+        text_color_threshold: Optional[float],
+        engine: Optional[OcrEngine],
+        char_whitelist: Optional[str],
+        imglog: ImageLogger,
+):
 
     if _config is None:
         _config = {}
+    else:
+        _config = dict(_config)
 
     if lang is None:
         lang = get_config("ocr", "lang", "eng")
@@ -635,7 +666,7 @@ def _tesseract(frame, region, mode, lang, _config, user_patterns, user_words,
         raise ValueError("%s isn't available in tesseract %s"
                          % (mode, tesseract_version))
 
-    imglog.imwrite("source", frame)
+    imglog.imwrite("frame", frame)
     imglog.set(region=region, engine=engine, mode=mode, lang=lang,
                tesseract_config=_config.copy(),
                user_patterns=user_patterns, user_words=user_words,
@@ -646,20 +677,47 @@ def _tesseract(frame, region, mode, lang, _config, user_patterns, user_words,
 
     frame = crop(frame, region)
 
+    upsample_arg = upsample
     if text_color is not None:
         if upsample:
             frame = _upsample(frame, imglog)
-            upsample = False
+            upsample_arg = False
         frame = ocr.text_color_differ(frame, text_color, text_color_threshold,
                                       imglog)
 
-    return _tesseract_subprocess(frame, mode, lang, _config,  # pylint:disable=unexpected-keyword-arg
-                                 user_patterns, user_words, upsample,
-                                 engine, char_whitelist, imglog,
-                                 tesseract_version, use_cache=True)
+    txt, hocr = _tesseract_subprocess(  # pylint:disable=unexpected-keyword-arg
+        frame, mode, lang, _config, user_patterns, user_words, upsample_arg,
+        engine, char_whitelist, imglog, tesseract_version,
+        use_cache=True)
+
+    if imglog.enabled:
+        if upsample:
+            scale = 3
+        else:
+            scale = 1
+        off_x = max(0, region.x)
+        off_y = max(0, region.y)
+        imglog.set(
+            source_tsv_regions=[
+                (
+                    Region.from_extents(
+                        off_x + r.x // scale,
+                        off_y + r.y // scale,
+                        off_x + (r.right + scale - 1) // scale,
+                        off_y + (r.bottom + scale - 1) // scale),
+                    css_class,
+                    title
+                )
+                for r, css_class, title in imglog.data["tsv_regions"]
+            ]
+        )
+
+    assert isinstance(txt, (str, type(None)))
+    assert isinstance(hocr, (str, type(None)))
+    return txt, hocr
 
 
-def bgr_diff(frame, color, threshold, imglog):
+def bgr_diff(frame, color, threshold, imglog: ImageLogger):
     # Calculate distance of each pixel from `text_color`, then discard
     # everything further than `text_color_threshold` distance away.
     sqd = numpy.subtract(frame, Color(color).array, dtype=numpy.int32)
@@ -669,21 +727,49 @@ def bgr_diff(frame, color, threshold, imglog):
 
     if imglog.enabled:
         normalised = numpy.sqrt(sqd / 3)
-        imglog.imwrite("diff", normalised)
+        imglog.imwrite(
+            "diff", normalised,
+            description=(
+                f"The Euclidean distance of each pixel from the specified "
+                f"text_color ({color!r}), normalised to the range 0–255.  "
+                "Darker pixels are closer to the text color and are more "
+                "likely to be text."
+            ),
+            source_region=imglog.data.get("region"),
+        )
 
     d = sqd >= (threshold ** 2) * 3
     d = d.astype(numpy.uint8) * 255
-    imglog.imwrite("binarized", d)
+    imglog.imwrite(
+        "binarized", d,
+        description=(
+            f"Binary image after applying text_color_threshold ({threshold}). "
+            "Black pixels are within the threshold distance of text_color and "
+            "will be treated as potential text; white pixels are too far from "
+            "text_color and will be treated as background."
+        ),
+        source_region=imglog.data.get("region"),
+    )
     return d
 
 
 ocr.text_color_differ = bgr_diff
 
 
-@imgproc_cache.memoize({"version": "33"})
+@imgproc_cache.memoize({"version": "34"})
 def _tesseract_subprocess(
-        frame, mode, lang, _config, user_patterns, user_words, upsample,
-        engine, char_whitelist, imglog, tesseract_version):
+        frame: FrameT,
+        mode: int,
+        lang: str,
+        _config: dict,
+        user_patterns: list[str] | None,
+        user_words: list[str] | None,
+        upsample: int,
+        engine: int,
+        char_whitelist: str | None,
+        imglog: ImageLogger,
+        tesseract_version: list[int],
+) -> tuple[Optional[str], Optional[str]]:
 
     if tesseract_version >= [4, 0]:
         engine_flags = ["--oem", str(int(engine))]
@@ -721,10 +807,6 @@ def _tesseract_subprocess(
             if tesseract_version >= [4, 0, 0]:
                 tessenv['TESSDATA_PREFIX'] += "tessdata"
 
-        if ('tessedit_create_hocr' in _config and
-                tesseract_version >= [3, 4]):
-            _config['tessedit_create_txt'] = 0
-
         if user_words:
             if 'user_words_suffix' in _config:
                 raise ValueError(
@@ -757,6 +839,7 @@ def _tesseract_subprocess(
 
         if imglog.enabled:
             _config['tessedit_write_images'] = True
+            _config['tessedit_create_tsv'] = 1
 
         if _config:
             os.makedirs(tessdata_dir + '/configs', exist_ok=True)
@@ -777,26 +860,132 @@ def _tesseract_subprocess(
             warn("Tesseract failed: %s" % e.output.decode("utf-8", "replace"))
             raise
 
+        try:
+            with open(tmp + "/output.txt", encoding='utf-8') as f:
+                txt = f.read()
+        except FileNotFoundError:
+            txt = None
+        try:
+            with open(tmp + "/output.hocr", encoding='utf-8') as f:
+                hocr = f.read()
+        except FileNotFoundError:
+            hocr = None
+
         if imglog.enabled:
+            tsv_regions: list[tuple[Region, str, str | None]] = []
+            try:
+                with open(tmp + "/output.tsv", encoding='utf-8') as f:
+                    import csv
+                    tsv = list(csv.DictReader(f, delimiter='\t'))
+            except FileNotFoundError:
+                pass
+            else:
+                for row in tsv:
+                    level = int(row['level'])
+                    css_class = "tsv-" + _TSV_LEVEL_TO_TYPE[level]
+                    region = Region(
+                        int(row['left']), int(row['top']),
+                        int(row['width']), int(row['height'])
+                    )
+                    if level > 1:
+                        title = _TSV_LEVEL_TO_TYPE[level].capitalize()
+                        if row['text']:
+                            title += " \"%s\"\n(confidence: %s%%)" % (
+                                row['text'], row['conf'])
+
+                        tsv_regions.append((region, css_class, title))
+
+            imglog.set(tsv_regions=tsv_regions)
+
+            tsv_words = [x for x in tsv_regions if x[1] == "tsv-word"]
+            if not tsv_words:
+                info_msg = "Note: No words were detected by Tesseract."
+            else:
+                info_msg = (
+                    "This image should have at least a 1px white border "
+                    "around every edge."
+                )
+                bad_borders = []
+                for region, css_class, title in tsv_words:
+                    touching_edge = []
+                    if region.x <= 0:
+                        touching_edge.append("left")
+                    if region.y <= 0:
+                        touching_edge.append("top")
+                    if region.right >= frame.shape[1]:
+                        touching_edge.append("right")
+                    if region.bottom >= frame.shape[0]:
+                        touching_edge.append("bottom")
+                    if touching_edge:
+                        bad_borders.append(
+                            "* The word %s is touching the %s edge(s) of the "
+                            "image.\n" % (
+                                title.replace("\n", " "),
+                                and_join(touching_edge)))
+                if bad_borders:
+                    info_msg += (
+                        "  Note:\n\n" + "".join(bad_borders) +
+                        "\nLack of a border can indicate that:\n"
+                        "\n"
+                        "* The region is too big and it's including some "
+                        "surrounding text that should not be there.\n"
+                        "* The region is too small and the text overlaps "
+                        "the edge of the image, indicating that some of "
+                        "the text might be outside the image\n"
+                        "* There is some non-text background that is "
+                        "surviving thresholding\n"
+                        "\n"
+                        "IMPORTANT: Look at the image to see which of the "
+                        "above issues is the case, and adjust your region "
+                        "or thresholding accordingly."
+                    )
+
             tessinput = os.path.join(tmp, "tessinput.tif")
             if os.path.exists(tessinput):
-                imglog.imwrite("tessinput", cv2.imread(tessinput))
+                imglog.imwrite(
+                    "tessinput", cv2.imread(tessinput),
+                    description=(
+                        "The image as binarized internally by Tesseract.  "
+                        "This shows exactly what Tesseract is analysing after "
+                        "its own preprocessing.  Text is black, background is "
+                        "white\n"
+                        "\n" + info_msg
+                    ),
+                    source_region=imglog.data.get("region"),
+                )
 
-        for filename in glob.glob(tmp + "/output.*"):
-            _, ext = os.path.splitext(filename)
-            if ext in (".txt", ".hocr"):
-                with open(filename, encoding='utf-8') as f:
-                    return f.read()
+        return txt, hocr
 
 
-def _upsample(frame, imglog):
+def and_join(elems: list[str]) -> str:
+    match elems:
+        case []:
+            return ""
+        case [x]:
+            return x
+        case [*x, y]:
+            return "%s and %s" % (", ".join(x), y)
+
+
+_TSV_LEVEL_TO_TYPE = [None, 'page', 'block', 'paragraph', 'line', 'word']
+
+
+def _upsample(frame, imglog: ImageLogger):
     # We scale image up 3x before feeding it to tesseract as this
     # significantly reduces the error rate by more than 6x in tests.  This
     # uses bilinear interpolation which produces the best results.  See
     # http://stb-tester.com/blog/2014/04/14/improving-ocr-accuracy.html
     outsize = (frame.shape[1] * 3, frame.shape[0] * 3)
     frame = cv2.resize(frame, outsize, interpolation=cv2.INTER_LINEAR)
-    imglog.imwrite("upsampled", frame)
+    imglog.imwrite(
+        "upsampled", frame,
+        description=(
+            "The region of interest scaled up 3x using bilinear "
+            "interpolation, as fed to Tesseract.  Upsampling improves OCR "
+            "accuracy on small or low-resolution text."
+        ),
+        source_region=imglog.data.get("region"),
+    )
     return frame
 
 
@@ -871,7 +1060,7 @@ def _find_tessdata_dir(tessdata_suffix):
     raise RuntimeError('Installation error: Cannot locate tessdata directory')
 
 
-def _log_ocr_image_debug(imglog, output=None):
+def _log_ocr_image_debug(imglog: ImageLogger, output=None):
     if not imglog.enabled:
         return
 
@@ -890,9 +1079,16 @@ def _log_ocr_image_debug(imglog, output=None):
             output = "".join(x for x, _ in _hocr_iterate(hocr))
 
     template = """\
+        <style>
+            .tsv-block { outline: 4px solid orange; }
+            .tsv-paragraph { outline: 3px solid yellow; }
+            .tsv-line { outline: 2px solid green; }
+            .tsv-word { outline: 1px solid blue; }
+            img.img-tessinput { outline: 2px solid #8080ff; }
+        </style>
         <h4>{{title}}</h4>
 
-        {{ annotated_image(result) }}
+        {{ annotated_image([result] + source_tsv_regions) }}
 
         {% if match_text %}
         <h5>Result:</h5>
@@ -925,12 +1121,12 @@ def _log_ocr_image_debug(imglog, output=None):
 
         {% if "upsampled" in images %}
         <h5>ROI Scaled:</h5>
-        <img src="upsampled.png" />
+        {{ img("upsampled") }}
         {% endif %}
 
         {% if "diff" in images %}
         <h5>Color difference {{ text_color }}:</h5>
-        <img src="diff.png" />
+        {{ img("diff") }}
         {% endif %}
 
         {% if "binarized" in images %}
@@ -938,12 +1134,12 @@ def _log_ocr_image_debug(imglog, output=None):
           Color difference – binarised
           (threshold={{ text_color_threshold }}):
         </h5>
-        <img src="binarized.png" />
+        {{ img("binarized") }}
         {% endif %}
 
         {% if "tessinput" in images %}
         <h5>Tesseract's binarisation:</h5>
-        <img src="tessinput.png" />
+        {{ annotated_image(tsv_regions, source_name="tessinput") }}
         {% endif %}
     """
 

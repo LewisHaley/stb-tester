@@ -192,8 +192,13 @@ class BGRDiff(Differ):
 
         imglog = ImageLogger("BGRDiff", region=region,
                              min_size=self.min_size, threshold=self.threshold)
-        imglog.imwrite("source", frame)
-        imglog.imwrite("previous_frame", prev_frame)
+        imglog.imwrite("frame", frame)
+        imglog.imwrite(
+            "previous_frame", prev_frame,
+            description=(
+                "Previous video frame, compared against the current frame "
+                "to detect differences."
+            ))
 
         cframe = crop(frame, region)
         cprev = crop(prev_frame, region)
@@ -202,15 +207,38 @@ class BGRDiff(Differ):
                                 imglog, mask_pixels)
         if mask_pixels is not None:
             numpy.bitwise_and(d, mask_pixels[:, :, 0], out=d)
-            imglog.imwrite("mask", mask_pixels)
+            imglog.imwrite(
+                "mask", mask_pixels,
+                description=(
+                    "Mask applied to the image. White pixels indicate "
+                    "the parts of the frame that were analysed for motion, "
+                    "and black pixels indicate the parts that were ignored."
+                ),
+                source_region=region)
 
         if imglog.enabled:
-            imglog.imwrite("thresholded", d * 255)
+            imglog.imwrite(
+                "thresholded", d * 255,
+                description=(
+                    "Binary image showing pixels where the BGR colour distance "
+                    "between the current and previous frame exceeded the "
+                    f"threshold ({self.threshold}). White pixels indicate "
+                    "detected differences."
+                ),
+                source_region=region)
 
         if self.kernel is not None:
             d = cv2.morphologyEx(d, cv2.MORPH_OPEN, self.kernel)
             if imglog.enabled:
-                imglog.imwrite("eroded", d * 255)
+                imglog.imwrite(
+                    "eroded", d * 255,
+                    description=(
+                        "Thresholded difference image after morphological "
+                        "opening (erosion followed by dilation) to remove "
+                        "single-pixel noise. Remaining white pixels indicate "
+                        "differences."
+                    ),
+                    source_region=region)
 
         out_region = pixel_bounding_box(d)
         if out_region:
@@ -269,12 +297,22 @@ def _threshold_diff_bgr_numpy(
 
     if imglog is not None and imglog.enabled:
         normalised = numpy.sqrt(sqd / 3)
+        sqd_description = (
+            "Pixel-by-pixel BGR colour distance between the current and "
+            "previous frame (normalised to 0-255). Brighter pixels indicate "
+            "larger colour differences."
+        )
+        sqd_region = imglog.data.get("region")
         if mask_pixels is None:
-            imglog.imwrite("sqd", normalised)
+            imglog.imwrite(
+                "sqd", normalised, description=sqd_description,
+                source_region=sqd_region)
         else:
-            imglog.imwrite("sqd",
-                           normalised.astype(numpy.uint8) &
-                           mask_pixels[:, :, 0])
+            imglog.imwrite(
+                "sqd",
+                normalised.astype(numpy.uint8) & mask_pixels[:, :, 0],
+                description=sqd_description + " Masked.",
+                source_region=sqd_region)
 
     return (sqd >= threshold).astype(numpy.uint8)
 
@@ -296,22 +334,22 @@ BGRDIFF_HTML = """\
     {% endif %}
 
     <h5>Previous frame:</h5>
-    <img src="previous_frame.png" />
+    {{ img("previous_frame") }}
 
     <h5>Differences:</h5>
-    <img src="sqd.png" />
+    {{ img("sqd") }}
 
     {% if "mask" in images %}
     <h5>Mask:</h5>
-    <img src="mask.png" />
+    {{ img("mask") }}
     {% endif %}
 
     <h5>Differences above threshold ({{threshold}}):</h5>
-    <img src="thresholded.png" />
+    {{ img("thresholded") }}
 
     {% if "eroded" in images %}
     <h5>Eroded:</h5>
-    <img src="eroded.png" />
+    {{ img("eroded") }}
     {% endif %}
 """
 
@@ -375,26 +413,76 @@ class GrayscaleDiff(Differ):
         imglog = ImageLogger("GrayscaleDiff", region=region,
                              min_size=self.min_size,
                              threshold=self.threshold)
-        imglog.imwrite("source", frame)
-        imglog.imwrite("gray", frame_gray)
-        imglog.imwrite("previous_frame_gray", prev_frame_gray)
+        imglog.imwrite(
+            "frame", frame,
+            source_region=Region(0, 0, frame.shape[1], frame.shape[0]))
+        imglog.imwrite(
+            "gray", frame_gray,
+            description=(
+                "Grayscale version of the current frame cropped to the "
+                f"region of interest ({region})."
+            ),
+            source_region=region)
+        imglog.imwrite(
+            "previous_frame_gray", prev_frame_gray,
+            description=(
+                f"Grayscale version of the previous frame cropped to the "
+                f"region of interest ({region}), compared against the "
+                "current frame to detect motion."
+            ),
+            source_region=region)
 
         absdiff = cv2.absdiff(prev_frame_gray, frame_gray)
-        imglog.imwrite("absdiff", absdiff)
+        imglog.imwrite(
+            "absdiff", absdiff,
+            description=(
+                "Absolute pixel-by-pixel difference between the current and "
+                "previous grayscale frames. Brighter pixels indicate larger "
+                "differences."
+            ),
+            source_region=region)
 
         if mask is not None:
             absdiff = cv2.bitwise_and(absdiff, mask)
-            imglog.imwrite("mask", mask)
-            imglog.imwrite("absdiff_masked", absdiff)
+            imglog.imwrite(
+                "mask", mask,
+                description=(
+                    "Mask applied to the image. White pixels indicate "
+                    "the parts of the frame that were analysed for motion, "
+                    "and black pixels indicate the parts that were ignored."
+                ),
+                source_region=region)
+            imglog.imwrite(
+                "absdiff_masked", absdiff,
+                description=(
+                    "Absolute difference image after applying the mask. "
+                    "Only the white (unmasked) pixels contribute to motion "
+                    "detection."
+                ),
+                source_region=region)
 
         _, thresholded = cv2.threshold(
             absdiff, int((1 - self.threshold) * 255), 255,
             cv2.THRESH_BINARY)
-        imglog.imwrite("absdiff_threshold", thresholded)
+        imglog.imwrite(
+            "absdiff_threshold", thresholded,
+            description=(
+                "Binary image showing pixels where the grayscale difference "
+                f"exceeded the threshold ({self.threshold}). White pixels "
+                "indicate detected differences."
+            ),
+            source_region=region)
         if self.kernel is not None:
             thresholded = cv2.morphologyEx(
                 thresholded, cv2.MORPH_OPEN, self.kernel)
-            imglog.imwrite("eroded", thresholded)
+            imglog.imwrite(
+                "eroded", thresholded,
+                description=(
+                    "Thresholded difference image after morphological opening "
+                    "(erosion followed by dilation) to remove single-pixel "
+                    "noise. Remaining white pixels indicate differences."
+                ),
+                source_region=region)
 
         out_region = pixel_bounding_box(thresholded)
         if out_region:
@@ -433,26 +521,26 @@ GRAYSCALEDIFF_HTML = """\
     {% endif %}
 
     <h5>ROI Gray:</h5>
-    <img src="gray.png" />
+    {{ img("gray") }}
 
     <h5>Previous frame ROI Gray:</h5>
-    <img src="previous_frame_gray.png" />
+    {{ img("previous_frame_gray") }}
 
     <h5>Absolute difference:</h5>
-    <img src="absdiff.png" />
+    {{ img("absdiff") }}
 
     {% if "mask" in images %}
     <h5>Mask:</h5>
-    <img src="mask.png" />
+    {{ img("mask") }}
     <h5>Absolute difference – masked:</h5>
-    <img src="absdiff_masked.png" />
+    {{ img("absdiff_masked") }}
     {% endif %}
 
     <h5>Binarized (threshold={{threshold}}):</h5>
-    <img src="absdiff_threshold.png" />
+    {{ img("absdiff_threshold") }}
 
     {% if "eroded" in images %}
     <h5>Eroded:</h5>
-    <img src="eroded.png" />
+    {{ img("eroded") }}
     {% endif %}
 """

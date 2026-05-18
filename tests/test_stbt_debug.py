@@ -1,5 +1,8 @@
 import itertools
 import os
+import pathlib
+import re
+import shutil
 import subprocess
 
 import pytest
@@ -60,7 +63,7 @@ def test_match_debug(tmp_path):
             "stbt-debug/00001/level2-template.png",
             "stbt-debug/00001/match0-heatmap.png",
             "stbt-debug/00001/match0-source_with_match.png",
-            "stbt-debug/00001/source.png",
+            "stbt-debug/00001/frame.png",
             "stbt-debug/00001/template.png",
             "stbt-debug/00002",
             "stbt-debug/00002/index.html",
@@ -144,7 +147,7 @@ def test_match_debug(tmp_path):
             "stbt-debug/00002/match5-source_with_match.png",
             "stbt-debug/00002/match6-heatmap.png",
             "stbt-debug/00002/match6-source_with_match.png",
-            "stbt-debug/00002/source.png",
+            "stbt-debug/00002/frame.png",
             "stbt-debug/00002/template.png",
             "stbt-debug/00003",
             "stbt-debug/00003/index.html",
@@ -236,7 +239,7 @@ def test_match_debug(tmp_path):
             "stbt-debug/00003/match6-confirm-template_gray.png",
             "stbt-debug/00003/match6-heatmap.png",
             "stbt-debug/00003/match6-source_with_match.png",
-            "stbt-debug/00003/source.png",
+            "stbt-debug/00003/frame.png",
             "stbt-debug/00003/template.png",
             "stbt-debug/00004",
             "stbt-debug/00004/index.html",
@@ -314,7 +317,7 @@ def test_match_debug(tmp_path):
             "stbt-debug/00004/match6-confirm-template_gray.png",
             "stbt-debug/00004/match6-heatmap.png",
             "stbt-debug/00004/match6-source_with_match.png",
-            "stbt-debug/00004/source.png",
+            "stbt-debug/00004/frame.png",
             "stbt-debug/00004/template.png",
         }
 
@@ -354,14 +357,14 @@ def test_motion_debug(tmp_path):
             "stbt-debug/00001/eroded.png",
             "stbt-debug/00001/index.html",
             "stbt-debug/00001/previous_frame.png",
-            "stbt-debug/00001/source.png",
+            "stbt-debug/00001/frame.png",
             "stbt-debug/00001/sqd.png",
             "stbt-debug/00001/thresholded.png",
             "stbt-debug/00002",
             "stbt-debug/00002/eroded.png",
             "stbt-debug/00002/index.html",
             "stbt-debug/00002/previous_frame.png",
-            "stbt-debug/00002/source.png",
+            "stbt-debug/00002/frame.png",
             "stbt-debug/00002/sqd.png",
             "stbt-debug/00002/thresholded.png",
             "stbt-debug/00003",
@@ -369,7 +372,7 @@ def test_motion_debug(tmp_path):
             "stbt-debug/00003/index.html",
             "stbt-debug/00003/mask.png",
             "stbt-debug/00003/previous_frame.png",
-            "stbt-debug/00003/source.png",
+            "stbt-debug/00003/frame.png",
             "stbt-debug/00003/sqd.png",
             "stbt-debug/00003/thresholded.png",
             "stbt-debug/00004",
@@ -377,21 +380,21 @@ def test_motion_debug(tmp_path):
             "stbt-debug/00004/index.html",
             "stbt-debug/00004/mask.png",
             "stbt-debug/00004/previous_frame.png",
-            "stbt-debug/00004/source.png",
+            "stbt-debug/00004/frame.png",
             "stbt-debug/00004/sqd.png",
             "stbt-debug/00004/thresholded.png",
             "stbt-debug/00005",
             "stbt-debug/00005/eroded.png",
             "stbt-debug/00005/index.html",
             "stbt-debug/00005/previous_frame.png",
-            "stbt-debug/00005/source.png",
+            "stbt-debug/00005/frame.png",
             "stbt-debug/00005/sqd.png",
             "stbt-debug/00005/thresholded.png",
             "stbt-debug/00006",
             "stbt-debug/00006/eroded.png",
             "stbt-debug/00006/index.html",
             "stbt-debug/00006/previous_frame.png",
-            "stbt-debug/00006/source.png",
+            "stbt-debug/00006/frame.png",
             "stbt-debug/00006/sqd.png",
             "stbt-debug/00006/thresholded.png",
         }
@@ -431,31 +434,31 @@ def test_ocr_debug(tmp_path):
         assert files == {
             "stbt-debug/00001",
             "stbt-debug/00001/index.html",
-            "stbt-debug/00001/source.png",
+            "stbt-debug/00001/frame.png",
             "stbt-debug/00001/upsampled.png",
             "stbt-debug/00002",
             "stbt-debug/00002/index.html",
-            "stbt-debug/00002/source.png",
+            "stbt-debug/00002/frame.png",
             "stbt-debug/00002/upsampled.png",
             "stbt-debug/00003",
             "stbt-debug/00003/binarized.png",
             "stbt-debug/00003/diff.png",
             "stbt-debug/00003/index.html",
-            "stbt-debug/00003/source.png",
+            "stbt-debug/00003/frame.png",
             "stbt-debug/00003/upsampled.png",
             "stbt-debug/00004",
             "stbt-debug/00004/index.html",
-            "stbt-debug/00004/source.png",
+            "stbt-debug/00004/frame.png",
             "stbt-debug/00004/upsampled.png",
             "stbt-debug/00005",
             "stbt-debug/00005/index.html",
-            "stbt-debug/00005/source.png",
+            "stbt-debug/00005/frame.png",
             "stbt-debug/00005/upsampled.png",
             "stbt-debug/00006",
             "stbt-debug/00006/binarized.png",
             "stbt-debug/00006/diff.png",
             "stbt-debug/00006/index.html",
-            "stbt-debug/00006/source.png",
+            "stbt-debug/00006/frame.png",
             "stbt-debug/00006/upsampled.png",
         }
 
@@ -490,24 +493,24 @@ def test_is_screen_black_debug(tmp_path):
             "stbt-debug/00001/gray.png",
             "stbt-debug/00001/index.html",
             "stbt-debug/00001/non_black.png",
-            "stbt-debug/00001/source.png",
+            "stbt-debug/00001/frame.png",
             "stbt-debug/00002",
             "stbt-debug/00002/gray.png",
             "stbt-debug/00002/index.html",
             "stbt-debug/00002/mask.png",
             "stbt-debug/00002/non_black.png",
-            "stbt-debug/00002/source.png",
+            "stbt-debug/00002/frame.png",
             "stbt-debug/00003",
             "stbt-debug/00003/gray.png",
             "stbt-debug/00003/index.html",
             "stbt-debug/00003/mask.png",
             "stbt-debug/00003/non_black.png",
-            "stbt-debug/00003/source.png",
+            "stbt-debug/00003/frame.png",
             "stbt-debug/00004",
             "stbt-debug/00004/gray.png",
             "stbt-debug/00004/index.html",
             "stbt-debug/00004/non_black.png",
-            "stbt-debug/00004/source.png",
+            "stbt-debug/00004/frame.png",
         }
 
         assert_expected(
@@ -519,10 +522,13 @@ def test_is_screen_black_debug(tmp_path):
 def assert_expected(expected, stbt_debug_dir):
     expected = _find_file(expected)
 
-    # To update expected results in source checkout:
-    # import shutil
-    # shutil.rmtree(expected)
-    # shutil.move("stbt-debug", expected)
+    # We don't want incidental changes to cause this test to fail:
+    _remove_traceback_lines_from_html(pathlib.Path(stbt_debug_dir))
+
+    if os.environ.get("REGENERATE_TEST_DATA") == "1":
+        if os.path.exists(expected):
+            shutil.rmtree(expected)
+        shutil.copytree(stbt_debug_dir, expected)
 
     subprocess.check_call([
         "diff", "-u", "-r", "--exclude=*.png",
@@ -531,6 +537,23 @@ def assert_expected(expected, stbt_debug_dir):
         r"--ignore-matching-lines=0\.99",
         "--ignore-matching-lines=Region",
         expected, stbt_debug_dir])
+
+
+def _remove_traceback_lines_from_html(stbt_debug_dir: pathlib.Path):
+    pattern = re.compile(r"File .*, line .*, in")
+    for html_file in stbt_debug_dir.rglob("*.html"):
+        lines = html_file.read_text().splitlines(keepends=True)
+        filtered = []
+        skip_next = False
+        for line in lines:
+            if skip_next:
+                skip_next = False
+                continue
+            if pattern.search(line):
+                skip_next = True
+                continue
+            filtered.append(line)
+        html_file.write_text("".join(filtered))
 
 
 def _find_file(path, root=os.path.dirname(os.path.abspath(__file__))):

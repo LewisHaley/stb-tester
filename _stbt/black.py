@@ -80,11 +80,21 @@ def is_screen_black(frame: Optional[Frame] = None,
 
     draw_source_region(frame, region)
     imglog = ImageLogger("is_screen_black", region=region, threshold=threshold)
-    imglog.imwrite("source", frame)
+    imglog.imwrite("frame", frame)
 
     grayframe = cv2.cvtColor(crop(frame, region), cv2.COLOR_BGR2GRAY)
     if mask_ is not None:
-        imglog.imwrite("mask", mask_)
+        imglog.imwrite(
+            "mask", mask_,
+            description=(
+                "Mask applied to the image due to the 'mask' parameter "
+                f"({mask}).  This is a binary image where white pixels "
+                "indicate the parts of the frame that were analysed for "
+                "blackness, and black pixels indicate the parts of the frame "
+                "that were ignored."
+            ),
+            source_region=region,
+        )
         cv2.bitwise_and(grayframe, mask_, dst=grayframe)
     maxVal = grayframe.max()
 
@@ -98,16 +108,38 @@ def is_screen_black(frame: Optional[Frame] = None,
               maxVal=maxVal))
 
     if imglog.enabled:
-        imglog.imwrite("gray", grayframe)
+        mask_desc = " and applying the mask" if mask_ is not None else ""
+        imglog.imwrite(
+            "gray", grayframe, description=(
+                "Grayscale version of the relevant portion of the "
+                "source frame after cropping to the region of interest "
+                f"({region}){mask_desc}.  The values "
+                "here are in the range 0 (black) to 255 (white) and will "
+                "be compared against the threshold "
+                f"({threshold}) to determine whether the screen is black. "
+                f"The maximum pixel intensity in this image is {maxVal}."
+            ),
+            source_region=region,
+        )
         _, thresholded = cv2.threshold(grayframe, threshold, 255,
                                        cv2.THRESH_BINARY)
-        imglog.imwrite("non_black", thresholded)
         if result.black:
             bounding_box = None
         else:
-            bounding_box = pixel_bounding_box(thresholded)
-            assert bounding_box
-            bounding_box = bounding_box.translate(region)
+            orig_bounding_box = pixel_bounding_box(thresholded)
+            assert orig_bounding_box
+            bounding_box = orig_bounding_box.translate(region)
+        imglog.imwrite(
+            "non_black", thresholded, description=(
+                "Binary image showing the pixels that were considered "
+                "non-black after applying the threshold. The white pixels in "
+                "this image indicate the pixels that were considered non-black "
+                "and the black pixels indicate the pixels that were considered "
+                "black.  This corresponds to the region {region} of the source "
+                "frame."
+            ),
+            source_region=region,
+        )
         imglog.set(maxVal=maxVal, non_black_region=bounding_box)
     _log_image_debug(imglog, result)
 
@@ -128,7 +160,7 @@ class _IsScreenBlackResult():
             _frame_repr(self.frame)))
 
 
-def _log_image_debug(imglog, result):
+def _log_image_debug(imglog: ImageLogger, result):
     if not imglog.enabled:
         return
 
@@ -139,11 +171,11 @@ def _log_image_debug(imglog, result):
 
         {% if "mask" in images %}
         <h5>Mask:</h5>
-        <img src="mask.png" />
+        {{ img("mask") }}
         {% endif %}
 
         <h5>Grayscale, masked:</h5>
-        <img src="gray.png">
+        {{ img("gray") }}
         <ul>
           <li>Maximum pixel intensity: {{maxVal}}
           <li>threshold={{threshold}}
@@ -151,7 +183,7 @@ def _log_image_debug(imglog, result):
 
         {% if not result.black %}
         <h5>Non-black pixels in region:</h5>
-        <img src="non_black.png" />
+        {{ img("non_black") }}
         {% endif %}
     """
 

@@ -9,8 +9,29 @@
     a.nav.pull-right { margin-right: 0; }
     h5 { margin-top: 40px; }
     .annotated_image { position: relative; display: inline-block; }
-    .annotated_image img { max-width: 100%; }
-    .region { position: absolute; }
+    .annotated_image img { max-width: 100%; width: auto; height: auto; }
+    .region { position: absolute; pointer-events: none; }
+    .region.has-tooltip { pointer-events: auto; }
+    .region .tooltip {
+        visibility: hidden;
+        background-color: #333;
+        color: #fff;
+        text-align: center;
+        border-radius: 4px;
+        padding: 5px;
+        position: absolute;
+        z-index: 1;
+        bottom: calc(100% + 5px);
+        left: 0;
+        right: 0;
+        margin-left: auto;
+        margin-right: auto;
+        opacity: 0;
+        transition: opacity 0.3s;
+        width: max-content;
+        max-width: 300px;
+    }
+    .region:hover .tooltip { visibility: visible; opacity: 1; }
     .source_region { outline: 2px solid #8080ff; }
     .region.matched { outline: 2px solid #ff0020; }
     .region.nomatch { outline: 2px solid #ffff20; }
@@ -19,6 +40,7 @@
     .table th { font-weight: normal; background-color: #eee; }
     img.thumb {
         vertical-align: middle; max-width: 150px; max-height: 36px;
+        width: auto; height: auto;
         padding: 1px; border: 1px solid #ccc; }
     .table td { vertical-align: middle; }
 </style>
@@ -35,14 +57,18 @@
 <h4>is_screen_black: False</h4>
 
 <div class="annotated_image">
-  <img src="source.png">
+  <img class="img-frame" src="frame.png" title="Original uncropped source frame originally captured from the device under test
+
+This image is annotated with the following regions:
+
+* Region: Region(x=0, y=0, right=160, bottom=120) class: source_region
+* Region: Region(x=0, y=0, right=160, bottom=120) class: matched" height="240" width="320" >
   
   <div class="region source_region"
      style="left: 0.0%;
             top: 0.0%;
             width: 50.0%;
             height: 50.0%"
-     
      ></div>
   
   <div class="region matched"
@@ -50,7 +76,6 @@
             top: 0.0%;
             width: 50.0%;
             height: 50.0%"
-     
      ></div>
   
 </div>
@@ -58,7 +83,9 @@
 
 
 <h5>Grayscale, masked:</h5>
-<img src="gray.png">
+<img class="img-gray" src="gray.png" title="Grayscale version of the relevant portion of the source frame after cropping to the region of interest (Region(x=0, y=0, right=160, bottom=120)).  The values here are in the range 0 (black) to 255 (white) and will be compared against the threshold (20) to determine whether the screen is black. The maximum pixel intensity in this image is 255.
+
+This image was derived from the source frame by cropping to the region Region(x=0, y=0, right=160, bottom=120)." height="120" width="160" >
 <ul>
   <li>Maximum pixel intensity: 255
   <li>threshold=20
@@ -66,8 +93,12 @@
 
 
 <h5>Non-black pixels in region:</h5>
-<img src="non_black.png" />
+<img class="img-non_black" src="non_black.png" title="Binary image showing the pixels that were considered non-black after applying the threshold. The white pixels in this image indicate the pixels that were considered non-black and the black pixels indicate the pixels that were considered black.  This corresponds to the region {region} of the source frame.
 
-</div>
-</body>
-</html>
+This image was derived from the source frame by cropping to the region Region(x=0, y=0, right=160, bottom=120)." height="120" width="160" >
+    <h2>Call stack</h2>
+    <pre>Traceback (most recent call last):
+</pre>
+    </div>
+    </body>
+    </html>
